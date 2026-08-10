@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.admin.business.mapper.XxlJobCategoryMapper">
+
+	<resultMap id="XxlJobCategory" type="com.xxl.job.admin.business.model.XxlJobCategory" >
+		<result column="id" property="id" />
+		<result column="name" property="name" />
+		<result column="remark" property="remark" />
+		<result column="add_time" property="addTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<sql id="Base_Column_List">
+		t.id,
+		t.name,
+		t.remark,
+		t.add_time,
+		t.update_time
+	</sql>
+
+	<select id="findAll" resultMap="XxlJobCategory">
+		SELECT <include refid="Base_Column_List" />
+		FROM xxl_job_category AS t
+		ORDER BY t.id ASC
+	</select>
+
+	<select id="pageList" parameterType="java.util.HashMap" resultMap="XxlJobCategory">
+		SELECT <include refid="Base_Column_List" />
+		FROM xxl_job_category AS t
+		<trim prefix="WHERE" prefixOverrides="AND | OR" >
+			<if test="name != null and name != ''">
+				AND t.name like CONCAT(CONCAT('%', #{name}), '%')
+			</if>
+		</trim>
+		ORDER BY t.id ASC
+		LIMIT #{offset}, #{pagesize}
+	</select>
+
+	<select id="pageListCount" parameterType="java.util.HashMap" resultType="int">
+		SELECT count(1)
+		FROM xxl_job_category AS t
+		<trim prefix="WHERE" prefixOverrides="AND | OR" >
+			<if test="name != null and name != ''">
+				AND t.name like CONCAT(CONCAT('%', #{name}), '%')
+			</if>
+		</trim>
+	</select>
+
+	<select id="load" parameterType="java.lang.Integer" resultMap="XxlJobCategory">
+		SELECT <include refid="Base_Column_List" />
+		FROM xxl_job_category AS t
+		WHERE t.id = #{id}
+	</select>
+
+	<insert id="save" parameterType="com.xxl.job.admin.business.model.XxlJobCategory" useGeneratedKeys="true" keyProperty="id" >
+		INSERT INTO xxl_job_category ( `name`, `remark`, `add_time`, `update_time`)
+		VALUES ( #{name}, #{remark}, #{addTime}, #{updateTime} );
+	</insert>
+
+	<update id="update" parameterType="com.xxl.job.admin.business.model.XxlJobCategory" >
+		UPDATE xxl_job_category
+		SET `name` = #{name},
+		    `remark` = #{remark},
+		    `update_time` = #{updateTime}
+		WHERE id = #{id}
+	</update>
+
+	<delete id="remove" parameterType="java.lang.Integer" >
+		DELETE FROM xxl_job_category
+		WHERE id = #{id}
+	</delete>
+
+</mapper>

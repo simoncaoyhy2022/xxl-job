@@ -1,0 +1,41 @@
+# for backend
+*.iml
+.idea/
+**/target/
+.classpath
+.project
+.DS_Store
+
+# for frontend
+node_modules/
+dist/
+package-lock.json
+
+# for ai
+.opencode
+.omo
+.claude
+.specify
+specs
+
+# 编译输出
+*.class
+
+# IDE 配置
+.vscode/
+.settings/
+
+# 本地日志文件
+*.log
+logs/
+
+# 本地数据文件夹（仅忽略根目录下的 data 文件夹）
+/data/
+
+# ==========================================
+# 忽略包含真实密码的本地配置文件
+# ==========================================
+**/src/main/resources/application.properties
+
+# 但不要忽略我们刚创建的模板文件
+!**/src/main/resources/application.properties.template

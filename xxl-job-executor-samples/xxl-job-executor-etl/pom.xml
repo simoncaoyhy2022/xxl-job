@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.xuxueli</groupId>
+        <artifactId>xxl-job-executor-samples</artifactId>
+        <version>3.5.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>
+        xxl-job-executor-etl
+    </artifactId>
+    <packaging>jar</packaging>
+
+    <name>${project.artifactId}</name>
+    <description>Example executor project for spring boot.</description>
+    <url>https://www.xuxueli.com/</url>
+
+    <properties>
+    </properties>
+
+    <dependencies>
+        <!-- spring-boot-starter-web (spring-webmvc + tomcat) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- xxl-job-core -->
+        <dependency>
+            <groupId>com.xuxueli</groupId>
+            <artifactId>xxl-job-core</artifactId>
+        </dependency>
+
+        <!-- Mysql驱动包 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>8.2.2.jre8</version>
+        </dependency>
+
+        <!-- kettle依赖的标准的开源公共库 -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>commons-logging</groupId>-->
+<!--            <artifactId>commons-logging</artifactId>-->
+<!--            <version>1.2</version>-->
+<!--        </dependency>-->
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-vfs2</artifactId>
+            <version>2.10.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.54</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>32.0.1-jre</version> <!-- 修正为 -jre 版本 -->
+        </dependency>
+
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scannotation</groupId>
+            <artifactId>scannotation</artifactId>
+            <version>1.0.3</version>
+        </dependency>
+
+        <!-- kettle local start-->
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>kettle-core-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>kettle-engine-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>metastore-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>pentaho-encryption-support-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>js</artifactId>
+            <version>1.7R3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>libformula</artifactId>
+            <version>9.3.0.0-428</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>libbase</artifactId>
+            <version>9.3.0.0-428</version>
+        </dependency>
+        <!-- kettle local end-->
+
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.40</version>
+        </dependency>
+
+        <!-- 补充 Hutool 邮件工具所需的 javax.mail 依赖 -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>1.6.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+
+</project>
