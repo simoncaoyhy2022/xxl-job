@@ -227,7 +227,8 @@
                 currentEntries = r.data || [];
                 renderEntries();
                 renderBreadcrumb();
-                loadTree();
+                // loadTree();
+                updateTreeActive(); // 原来是 loadTree()，改为 updateTreeActive()
             })
         }
 
@@ -251,6 +252,18 @@
                 }
             });
             $('#entryList').html(html || '<tr><td colspan="7" class="repository-empty">当前目录为空</td></tr>')
+        }
+
+
+        // 仅更新左侧树的选中高亮状态，不重绘 DOM 节点
+        function updateTreeActive() {
+            $('#folderTree a').removeClass('active');
+            $('#folderTree a').each(function () {
+                var p = $(this).attr('data-path') || '';
+                if (p === currentPath) {
+                    $(this).addClass('active');
+                }
+            });
         }
 
 
@@ -387,7 +400,8 @@
                 $.post(base_url + '/scriptfile/directory', {parentPath: currentPath, name: name}, function (r) {
                     if (r.code == 200) {
                         layer.close(index);
-                        load(currentPath)
+                        load(currentPath);
+                        loadTree(); // 刷新左侧树结构
                     } else layer.msg(r.msg)
                 })
             })
@@ -468,7 +482,8 @@
                 $.post(base_url + '/scriptfile/delete', {'ids[]': id}, function (r) {
                     if (r.code == 200) {
                         layer.close(index);
-                        load(currentPath)
+                        load(currentPath);
+                        // loadTree(); // 刷新左侧树结构
                     } else layer.msg(r.msg)
                 })
             })
@@ -479,11 +494,13 @@
                 $.post(base_url + '/scriptfile/directory/delete', {path: path}, function (r) {
                     if (r.code == 200) {
                         layer.close(index);
-                        load(currentPath)
+                        load(currentPath);
+                        loadTree(); // 刷新左侧树结构
                     } else layer.msg(r.msg)
                 })
             })
         });
+        loadTree(); // 1. 加载左侧目录树
         load('');
     });
 </script>
