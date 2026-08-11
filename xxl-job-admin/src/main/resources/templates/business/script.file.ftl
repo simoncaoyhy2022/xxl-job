@@ -17,7 +17,12 @@
             padding: 7px 9px;
             color: #444;
             border-radius: 3px;
-            cursor: pointer
+            cursor: pointer;
+            /* 新增：禁止双击时选中文字 */
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         .repository-tree a:hover, .repository-tree a.active {
@@ -28,6 +33,38 @@
         .repository-tree .folder {
             padding-left: 18px
         }
+
+        /* 扩大展开/折叠图标的点击热区 (22x22px) 并增加悬浮高亮效果 */
+        .repository-tree .toggle-btn {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            font-size: 13px; /* 稍稍增大图标 */
+            margin-right: 3px;
+            margin-left: -5px; /* 修正左侧对齐微调 */
+            border-radius: 3px;
+            color: #666;
+            cursor: pointer;
+            vertical-align: middle;
+            transition: background-color 0.15s ease;
+        }
+
+        /* 鼠标悬浮在小箭头上时给出明显的背景高亮 */
+        .repository-tree .toggle-btn:hover {
+            background-color: #d0e5f2;
+            color: #23527c;
+        }
+
+        /* 无子目录时的占位块，确保文字对齐 */
+        .repository-tree .toggle-spacer {
+            display: inline-block;
+            width: 22px;
+            margin-right: 3px;
+            margin-left: -5px;
+        }
+
 
         .repository-path {
             font-size: 16px;
@@ -87,9 +124,9 @@
                         <table class="table table-bordered table-hover repository-table">
                             <thead>
                             <tr>
-                                <th width="125">ID</th>
+                                <th width="130">ID</th>
                                 <th>名称</th>
-                                <th width="110">类型</th>
+                                <th width="130">类型</th>
                                 <th width="90">大小</th>
                                 <th width="90">状态</th>
                                 <th width="165">更新时间</th>
@@ -144,6 +181,30 @@
     $(function () {
         var currentPath = '', currentEntries = [];
 
+// 1. 新增：记录被折叠的目录路径集合
+        var collapsedNodes = {};
+
+// 2. 新增：根据节点的父级折叠状态动态更新树节点的显示/隐藏
+        function updateTreeVisibility() {
+            $('#folderTree a').each(function () {
+                var parent = $(this).attr('data-parent');
+                if (parent === undefined) return; // 根节点始终展示
+
+                var isHidden = false;
+                var curr = parent;
+                while (true) {
+                    if (collapsedNodes[curr]) {
+                        isHidden = true;
+                        break;
+                    }
+                    if (curr === '') break;
+                    var idx = curr.lastIndexOf('/');
+                    curr = idx > -1 ? curr.substring(0, idx) : '';
+                }
+                $(this).toggle(!isHidden);
+            });
+        }
+
         function esc(v) {
             return $('<div>').text(v || '').html()
         }
@@ -196,15 +257,44 @@
         function loadTree() {
             $.get(base_url + '/scriptfile/directories', function (r) {
                 if (r.code != 200) {
-                    return
+                    return;
                 }
-                var html = '<a class="' + (!currentPath ? 'active' : '') + '" data-path=""><i class="fa fa-folder-open"></i> 脚本仓库</a>';
-                $.each(r.data || [], function (_, e) {
-                    var level = e.path.split('/').length - 1;
-                    html += '<a class="folder ' + (e.path === currentPath ? 'active' : '') + '" data-path="' + esc(e.path) + '" style="padding-left:' + (18 + level * 18) + 'px"><i class="fa fa-folder"></i> ' + esc(e.name) + '</a>'
+                var data = r.data || [];
+
+                // 1. 统计各路径是否有子目录，便于显示展开/折叠小箭头
+                var hasChildren = {};
+                $.each(data, function (_, e) {
+                    var parent = e.path.lastIndexOf('/') > -1 ? e.path.substring(0, e.path.lastIndexOf('/')) : '';
+                    hasChildren[parent] = true;
                 });
-                $('#folderTree').html(html)
-            })
+                hasChildren[''] = data.length > 0;
+
+                // 2. 渲染根节点（脚本仓库）
+                var rootCollapsed = !!collapsedNodes[''];
+                var rootIcon = hasChildren['']
+                    ? '<i class="fa ' + (rootCollapsed ? 'fa-caret-right' : 'fa-caret-down') + ' toggle-btn"></i>'
+                    : '<span class="toggle-spacer"></span>';
+                var html = '<a class="' + (!currentPath ? 'active' : '') + (rootCollapsed ? ' collapsed' : '') + '" data-path="" data-parent-root="true">' + rootIcon + '<i class="fa fa-folder-open"></i> 脚本仓库</a>';
+
+                // 3. 渲染各个层级的子目录节点
+                $.each(data, function (_, e) {
+                    var parentPath = e.path.lastIndexOf('/') > -1 ? e.path.substring(0, e.path.lastIndexOf('/')) : '';
+                    var level = e.path.split('/').length - 1;
+                    var isParent = !!hasChildren[e.path];
+                    var isCollapsed = !!collapsedNodes[e.path];
+                    var toggleIcon = isParent
+                        ? '<i class="fa ' + (isCollapsed ? 'fa-caret-right' : 'fa-caret-down') + ' toggle-btn"></i>'
+                        : '<span class="toggle-spacer"></span>';
+
+                    html += '<a class="folder ' + (e.path === currentPath ? 'active' : '') + (isCollapsed ? ' collapsed' : '') + '" data-path="' + esc(e.path) + '" data-parent="' + esc(parentPath) + '" style="padding-left:' + (18 + level * 18) + 'px">' +
+                        toggleIcon +
+                        '<i class="fa fa-folder"></i> ' + esc(e.name) + '</a>';
+                });
+
+                // 4. 插入页面 DOM，并重新计算应用当前树节点的展开/折叠显隐状态
+                $('#folderTree').html(html);
+                updateTreeVisibility();
+            });
         }
 
         function formatSize(size) {
@@ -217,9 +307,55 @@
             return new Date(v).toLocaleString()
         }
 
-        $('#folderTree').on('click', 'a', function () {
-            load($(this).data('path'))
+// 1. 单击目录：只有在切换到“不同目录”时才重新加载，防止重复销毁 DOM
+        $('#folderTree').on('click', 'a', function (e) {
+            var path = $(this).attr('data-path') || '';
+            if (path !== currentPath) {
+                load(path);
+            }
         });
+
+// 2. 双击整行：展开/折叠该目录
+        $('#folderTree').on('dblclick', 'a', function (e) {
+            e.preventDefault();
+
+            // 清除双击时浏览器默认选中的蓝色文本高亮
+            if (window.getSelection) {
+                window.getSelection().removeAllRanges();
+            }
+
+            var path = $(this).attr('data-path') || '';
+            var $toggleBtn = $(this).find('.toggle-btn');
+
+            // 只有非叶子节点（带展开/折叠图标的节点）才执行折叠/展开
+            if ($toggleBtn.length > 0) {
+                if (collapsedNodes[path]) {
+                    delete collapsedNodes[path];
+                    $toggleBtn.removeClass('fa-caret-right').addClass('fa-caret-down');
+                } else {
+                    collapsedNodes[path] = true;
+                    $toggleBtn.removeClass('fa-caret-down').addClass('fa-caret-right');
+                }
+                updateTreeVisibility();
+            }
+        });
+
+        // 3.1 折叠/展开图标点击事件（阻止事件冒泡，避免误触发目录选中）
+        $('#folderTree').on('click', '.toggle-btn', function (e) {
+            e.stopPropagation();
+            var $a = $(this).closest('a');
+            var path = $a.attr('data-path') || '';
+            if (collapsedNodes[path]) {
+                delete collapsedNodes[path];
+                $(this).removeClass('fa-caret-right').addClass('fa-caret-down');
+            } else {
+                collapsedNodes[path] = true;
+                $(this).removeClass('fa-caret-down').addClass('fa-caret-right');
+            }
+            updateTreeVisibility();
+        });
+
+
         $('#breadcrumb').on('click', 'a', function () {
             load($(this).data('path'))
         });
@@ -229,12 +365,19 @@
         $('#refreshList,#refreshTree').click(function () {
             load(currentPath)
         });
+
+        // 3.2 替换/修改现有的目录筛选事件（清空筛选时恢复折叠/展开状态）
         $('#folderSearch').on('input', function () {
-            var q = $(this).val().toLowerCase();
+            var q = $(this).val().toLowerCase().trim();
+            if (!q) {
+                updateTreeVisibility();
+                return;
+            }
             $('#folderTree a').each(function () {
-                $(this).toggle($(this).text().toLowerCase().indexOf(q) >= 0)
-            })
+                $(this).toggle($(this).text().toLowerCase().indexOf(q) >= 0);
+            });
         });
+
         $('#newFolderBtn').click(function () {
             if (!currentPath) {
                 layer.msg('请先进入 KETTLE、HOP 或 PYTHON 目录');
