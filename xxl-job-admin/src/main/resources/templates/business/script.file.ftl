@@ -2,14 +2,33 @@
 <html>
 <head><#import "../framework/common/common.macro.ftl" as netCommon><@netCommon.commonStyle />
     <style>
+
         .repository-panel {
-            min-height: 560px
+            min-height: 600px
         }
 
         .repository-tree {
             border-right: 1px solid #eee;
-            min-height: 560px;
+            min-height: 600px;
             padding: 10px 15px
+        }
+
+        #folderTree {
+            max-height: calc(100vh - 240px); /* 也可以写固定值如: max-height: 520px; */
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        #folderTree::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        #folderTree::-webkit-scrollbar-thumb {
+            background: #dcdcdc;
+            border-radius: 3px;
+        }
+        #folderTree::-webkit-scrollbar-thumb:hover {
+            background: #b0b0b0;
         }
 
         .repository-tree a {
@@ -101,10 +120,10 @@
             <div class="box-body">
                 <div class="row">
                     <div class="col-sm-3 repository-tree">
-                        <div class="input-group input-group-sm"><input id="folderSearch" class="form-control"
-                                                                       placeholder="筛选目录"><span
-                                    class="input-group-btn"><button class="btn btn-default" id="refreshTree"><i
-                                            class="fa fa-refresh"></i></button></span></div>
+                        <div class="input-group input-group-sm">
+                            <input id="folderSearch" class="form-control" placeholder="筛选目录">
+                            <span class="input-group-btn"><button class="btn btn-default" id="refreshTree">
+                                    <i class="fa fa-refresh"></i></button></span></div>
                         <hr style="margin:10px 0">
                         <div id="folderTree"></div>
                     </div>
