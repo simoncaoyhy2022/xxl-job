@@ -157,78 +157,109 @@ public class ScriptFileController {
     @PostMapping("/upload")
     @ResponseBody
     @XxlSso(role = Consts.ADMIN_ROLE)
-    public synchronized Response<String> upload(@RequestParam(required = false) Integer id, @RequestParam(required = false) String name, @RequestParam String scriptType,
-                                                @RequestParam(required = false) String remark, @RequestParam(required = false) String directory,
-                                                @RequestParam("file") MultipartFile file, HttpServletRequest request) {
+    public synchronized Response<String> upload(@RequestParam(required = false) Integer id,
+                                                @RequestParam(required = false) String name,
+                                                @RequestParam String scriptType,
+                                                @RequestParam(required = false) String remark,
+                                                @RequestParam(required = false) String directory,
+                                                @RequestParam("file") MultipartFile file,
+                                                HttpServletRequest request) {
         try {
-            if (file == null || file.isEmpty())
+            if (file == null || file.isEmpty()) {
                 return Response.ofFail("请选择要上传的文件");
-            if (file.getSize() > maxSize) return Response.ofFail("文件超过允许大小");
+            }
+            if (file.getSize() > maxSize) {
+                return Response.ofFail("文件超过允许大小");
+            }
+
             String type = scriptType == null ? "" : scriptType.trim().toUpperCase(Locale.ROOT);
             String original = safeFilename(file.getOriginalFilename());
             String displayName = StringTool.isBlank(name) ? original : name.trim();
             String ext = extension(original);
-            if (!allowed(type, ext)) return Response.ofFail("脚本类型与文件扩展名不匹配");
+            if (!allowed(type, ext)) {
+                return Response.ofFail("脚本类型与文件扩展名不匹配");
+            }
+
             LoginInfo login = XxlSsoHelper.loginCheckWithAttr(request).getData();
             String user = login == null ? "system" : login.getUserName();
-            XxlJobScriptFile target = id == null ? null : scriptFileMapper.load(id);
-            if (id != null && target == null) return Response.ofFail("文件不存在");
-            Path previous = target == null || StringTool.isBlank(target.getRelativePath()) ? null : resolve(target);
+
+            // 1. 计算目标保存目录
             String requestedDirectory = normalizeRelative(directory);
             String defaultDirectory = type.toLowerCase(Locale.ROOT);
-            String actualDirectory = target != null && requestedDirectory.isEmpty() ? relative(previous.getParent()) : (requestedDirectory.isEmpty() ? defaultDirectory : requestedDirectory);
+            String actualDirectory = requestedDirectory.isEmpty() ? defaultDirectory : requestedDirectory;
             validateDirectoryForType(actualDirectory, type);
+
             Path parent = resolveDirectory(actualDirectory);
             Files.createDirectories(parent);
+
+            // 2. 计算目标文件的物理路径和数据库相对路径
+            Path destination = parent.resolve(original).normalize();
+            if (!destination.startsWith(repositoryRoot())) {
+                return Response.ofFail("非法文件路径");
+            }
+            String destinationPath = relative(destination);
+
+            // 3. 检查数据库中是否已存在相同相对路径的文件记录
+            XxlJobScriptFile existingRecord = scriptFileMapper.findByRelativePathPrefix(destinationPath).stream()
+                    .filter(record -> destinationPath.equals(record.getRelativePath()))
+                    .findFirst()
+                    .orElse(null);
+
             Date now = new Date();
-            if (target == null) {
+            XxlJobScriptFile target;
+
+            // 4. 判断是更新已有记录、覆盖同名文件还是新增记录
+            if (id != null) {
+                target = scriptFileMapper.load(id);
+                if (target == null) {
+                    return Response.ofFail("文件记录不存在");
+                }
+            } else if (existingRecord != null) {
+                // 如果是上传同名文件，直接复用已有记录进行覆盖更新
+                target = existingRecord;
+            } else {
+                // 全新文件
                 target = new XxlJobScriptFile();
                 target.setCreateUser(user);
                 target.setCreateTime(now);
                 target.setStatus(1);
             }
-            Path destination = parent.resolve(original).normalize();
-            if (!destination.startsWith(repositoryRoot())) return Response.ofFail("非法文件路径");
-            String destinationPath = relative(destination);
-            Integer currentFileId = target.getId();
-            boolean occupied = scriptFileMapper.findByRelativePathPrefix(destinationPath).stream()
-                    .anyMatch(record -> destinationPath.equals(record.getRelativePath()) && (currentFileId == null || !currentFileId.equals(record.getId())));
-            if (occupied) return Response.ofFail("当前目录已存在同名脚本");
-            Files.createDirectories(Paths.get(tempPath).toAbsolutePath().normalize());
-            Path temporary = Files.createTempFile(Paths.get(tempPath).toAbsolutePath().normalize(), "upload-", ".tmp");
-            try (InputStream input = file.getInputStream()) {
-                Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING);
-            }
-            String sha256 = sha256(temporary);
-            Path staged = Files.createTempFile(destination.getParent(), ".upload-", ".tmp");
-            try {
-                Files.copy(temporary, staged, StandardCopyOption.REPLACE_EXISTING);
-                try {
-                    Files.move(staged, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-                } catch (AtomicMoveNotSupportedException ex) {
-                    Files.move(staged, destination, StandardCopyOption.REPLACE_EXISTING);
+
+            // 如果之前的文件路径与当前目标路径不同（例如修改了名称或跨目录移动），删除旧物理文件
+            if (target.getId() != null && target.getRelativePath() != null) {
+                Path previousPath = resolve(target);
+                if (!previousPath.equals(destination) && Files.exists(previousPath)) {
+                    Files.deleteIfExists(previousPath);
                 }
-            } finally {
-                Files.deleteIfExists(temporary);
-                Files.deleteIfExists(staged);
             }
-            if (previous != null && !previous.equals(destination)) Files.deleteIfExists(previous);
+
+            // 5. 保存/强制覆盖磁盘上的物理文件 (REPLACE_EXISTING)
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // 6. 更新实体元数据（补充完整 Mapper 必需的所有字段）
             target.setName(displayName);
             target.setScriptType(type);
-            target.setScriptSubtype(ext.toUpperCase(Locale.ROOT));
-            target.setOriginalFilename(original);
+            target.setScriptSubtype(ext);                  // 补充脚本子类型（扩展名，如 ktr/py/hpl）
+            target.setOriginalFilename(original);          // 补充原始文件名
             target.setRelativePath(destinationPath);
-            target.setFileSize(Files.size(destination));
-            target.setSha256(sha256);
-            target.setStatus(1);
+            target.setFileSize(file.getSize());
+            target.setSha256(sha256(destination));         // 补充文件 SHA256 哈希值
             target.setRemark(remark);
             target.setUpdateUser(user);
             target.setUpdateTime(now);
-            if (target.getId() == null) scriptFileMapper.save(target);
-            else scriptFileMapper.update(target);
-            return Response.ofSuccess(String.valueOf(target.getId()));
+
+            // 7. 保存或更新数据库记录
+            if (target.getId() == null) {
+                scriptFileMapper.save(target);
+            } else {
+                scriptFileMapper.update(target);
+            }
+
+            return Response.ofSuccess(destinationPath);
         } catch (Exception ex) {
-            return Response.ofFail("上传失败：" + ex.getMessage());
+            return Response.ofFail("上传脚本失败：" + ex.getMessage());
         }
     }
 
