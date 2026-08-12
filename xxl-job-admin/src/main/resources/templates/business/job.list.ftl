@@ -818,7 +818,7 @@ exit 0
                 {
                     title: I18n.jobinfo_field_category,
                     field: 'categoryId',
-                    width: '15',
+                    width: '10',
                     widthUnit: '%',
                     formatter: function (value, row, index) {
                         let result = I18n.system_empty;
@@ -837,8 +837,8 @@ exit 0
                     widthUnit: '%',
                     align: 'left',
                     formatter: function (value, row, index) {
-                        if (value.length > 15) {
-                            return '<span title="' + value + '">' + value.substr(0, 15) + '...</span>';
+                        if (value.length > 20) {
+                            return '<span title="' + value + '">' + value.substr(0, 20) + '...</span>';
                         } else {
                             return value;
                         }
@@ -847,7 +847,7 @@ exit 0
                 {
                     title: I18n.schedule_type,
                     field: 'scheduleType',
-                    width: '10',
+                    width: '15',
                     widthUnit: '%',
                     formatter: function (value, row, index) {
                         if (row.scheduleConf) {

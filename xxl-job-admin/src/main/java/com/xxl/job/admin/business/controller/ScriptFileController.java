@@ -333,9 +333,9 @@ public class ScriptFileController {
             return Response.ofFail("script unavailable");
         String directory = parentDirectory(entry.getRelativePath());
         String dirPrefix = directory.isEmpty() ? "" : directory + "/";
+
         List<XxlJobScriptFile> files = scriptFileMapper.findByRelativePathPrefix(dirPrefix).stream()
                 .filter(file -> file.getStatus() == 1)
-                .filter(file -> isDirectChild(file.getRelativePath(), dirPrefix))
                 .filter(file -> {
                     try {
                         return Files.isRegularFile(resolve(file));
@@ -345,6 +345,7 @@ public class ScriptFileController {
                 })
                 .sorted(Comparator.comparing(XxlJobScriptFile::getRelativePath, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
+
         if (files.stream().noneMatch(file -> Objects.equals(file.getId(), entry.getId())))
             return Response.ofFail("script unavailable");
         ScriptDirectoryBundle bundle = new ScriptDirectoryBundle();

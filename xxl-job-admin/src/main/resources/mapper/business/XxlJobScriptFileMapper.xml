@@ -1,15 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.xxl.job.admin.business.mapper.XxlJobScriptFileMapper">
- <resultMap id="ScriptFile" type="com.xxl.job.admin.business.model.XxlJobScriptFile">
-  <id column="id" property="id"/><result column="name" property="name"/><result column="script_type" property="scriptType"/><result column="script_subtype" property="scriptSubtype"/><result column="original_filename" property="originalFilename"/><result column="relative_path" property="relativePath"/><result column="file_size" property="fileSize"/><result column="sha256" property="sha256"/><result column="status" property="status"/><result column="remark" property="remark"/><result column="create_user" property="createUser"/><result column="update_user" property="updateUser"/><result column="create_time" property="createTime"/><result column="update_time" property="updateTime"/>
- </resultMap>
- <sql id="cols">id,name,script_type,script_subtype,original_filename,relative_path,file_size,sha256,status,remark,create_user,update_user,create_time,update_time</sql>
- <select id="load" resultMap="ScriptFile">select <include refid="cols"/> from xxl_job_script_file where id=#{id}</select>
- <select id="pageList" resultMap="ScriptFile">select <include refid="cols"/> from xxl_job_script_file <where><if test="name != null and name != ''">and name like concat('%',#{name},'%')</if><if test="scriptType != null and scriptType != ''">and script_type=#{scriptType}</if></where> order by update_time desc,id desc limit #{offset},#{pagesize}</select>
- <select id="pageListCount" resultType="int">select count(1) from xxl_job_script_file <where><if test="name != null and name != ''">and name like concat('%',#{name},'%')</if><if test="scriptType != null and scriptType != ''">and script_type=#{scriptType}</if></where></select>
- <insert id="save" useGeneratedKeys="true" keyProperty="id">insert into xxl_job_script_file(name,script_type,script_subtype,original_filename,relative_path,file_size,sha256,status,remark,create_user,update_user,create_time,update_time) values(#{name},#{scriptType},#{scriptSubtype},#{originalFilename},#{relativePath},#{fileSize},#{sha256},#{status},#{remark},#{createUser},#{updateUser},#{createTime},#{updateTime})</insert>
- <update id="update">update xxl_job_script_file set name=#{name},script_type=#{scriptType},script_subtype=#{scriptSubtype},original_filename=#{originalFilename},relative_path=#{relativePath},file_size=#{fileSize},sha256=#{sha256},status=#{status},remark=#{remark},update_user=#{updateUser},update_time=#{updateTime} where id=#{id}</update>
- <delete id="remove">delete from xxl_job_script_file where id=#{id}</delete>
- <select id="findByRelativePathPrefix" resultMap="ScriptFile">select <include refid="cols"/> from xxl_job_script_file where relative_path like concat(#{pathPrefix},'%')</select>
+    <resultMap id="ScriptFile" type="com.xxl.job.admin.business.model.XxlJobScriptFile">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="script_type" property="scriptType"/>
+        <result column="script_subtype" property="scriptSubtype"/>
+        <result column="original_filename" property="originalFilename"/>
+        <result column="relative_path" property="relativePath"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="sha256" property="sha256"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="create_user" property="createUser"/>
+        <result column="update_user" property="updateUser"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+    <sql id="cols">id
+    ,name,script_type,script_subtype,original_filename,relative_path,file_size,sha256,status,remark,create_user,update_user,create_time,update_time</sql>
+    <select id="load" resultMap="ScriptFile">select
+        <include refid="cols"/>
+        from xxl_job_script_file where id=#{id}
+    </select>
+    <select id="pageList" resultMap="ScriptFile">select
+        <include refid="cols"/>
+        from xxl_job_script_file
+        <where>
+            <if test="name != null and name != ''">and name like concat('%',#{name},'%')</if>
+            <if test="scriptType != null and scriptType != ''">and script_type=#{scriptType}</if>
+        </where>
+        order by update_time desc,id desc limit #{offset},#{pagesize}
+    </select>
+    <select id="pageListCount" resultType="int">select count(1) from xxl_job_script_file
+        <where>
+            <if test="name != null and name != ''">and name like concat('%',#{name},'%')</if>
+            <if test="scriptType != null and scriptType != ''">and script_type=#{scriptType}</if>
+        </where>
+    </select>
+    <insert id="save" useGeneratedKeys="true" keyProperty="id">insert into xxl_job_script_file(name, script_type,
+                                                                                               script_subtype,
+                                                                                               original_filename,
+                                                                                               relative_path, file_size,
+                                                                                               sha256, status, remark,
+                                                                                               create_user, update_user,
+                                                                                               create_time, update_time)
+                                                               values (#{name}, #{scriptType}, #{scriptSubtype},
+                                                                       #{originalFilename}, #{relativePath},
+                                                                       #{fileSize}, #{sha256}, #{status}, #{remark},
+                                                                       #{createUser}, #{updateUser}, #{createTime},
+                                                                       #{updateTime})</insert>
+    <update id="update">update xxl_job_script_file
+                        set name=#{name},
+                            script_type=#{scriptType},
+                            script_subtype=#{scriptSubtype},
+                            original_filename=#{originalFilename},
+                            relative_path=#{relativePath},
+                            file_size=#{fileSize},
+                            sha256=#{sha256},
+                            status=#{status},
+                            remark=#{remark},
+                            update_user=#{updateUser},
+                            update_time=#{updateTime}
+                        where id = #{id}</update>
+    <delete id="remove">delete
+                        from xxl_job_script_file
+                        where id = #{id}</delete>
+    <select id="findByRelativePathPrefix" resultMap="ScriptFile">select
+        <include refid="cols"/>
+        from xxl_job_script_file where relative_path like concat(#{pathPrefix},'%')
+    </select>
 </mapper>

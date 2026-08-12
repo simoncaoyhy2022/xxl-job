@@ -271,14 +271,14 @@
                 {
                     title: I18n.joblog_name + 'ID',
                     field: 'id',
-                    width: '10',
+                    width: '8',
                     widthUnit: '%',
                     align: 'left'
                 },
                 {
 					title: I18n.jobinfo_job,
 					field: 'jobId',
-					width: '15',
+					width: '20',
 					widthUnit: '%',
 					align: 'left',
 					formatter: function(value, row, index) {
@@ -288,8 +288,8 @@
                         if (name) {
                             jobShow += name;
                         }
-                        if (jobShow.length > 10) {
-                            jobShow = jobShow.substr(0, 10) + '...';
+                        if (jobShow.length > 20) {
+                            jobShow = jobShow.substr(0, 20) + '...';
                         }
 						// show
 						return jobShow;
@@ -297,7 +297,7 @@
 				},{
 					title: I18n.joblog_field_triggerTime,
 					field: 'triggerTime',
-					width: '15',
+					width: '13.5',
 					widthUnit: '%',
 					formatter: function(value, row, index) {
 						return value?moment(value).format("YYYY-MM-DD HH:mm:ss"):"";
@@ -329,7 +329,7 @@
 				},{
 					title: I18n.joblog_field_handleTime,
 					field: 'handleTime',
-					width: '15',
+					width: '13.5',
 					widthUnit: '%',
 					formatter: function(value, row, index) {
 						return value?moment(value).format("YYYY-MM-DD HH:mm:ss"):"";

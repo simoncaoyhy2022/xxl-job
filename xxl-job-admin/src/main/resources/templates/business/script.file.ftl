@@ -181,10 +181,13 @@
     $(function () {
         var currentPath = '', currentEntries = [];
 
-// 1. 新增：记录被折叠的目录路径集合
+        // 1. 新增：记录被折叠的目录路径集合
         var collapsedNodes = {};
 
-// 2. 新增：根据节点的父级折叠状态动态更新树节点的显示/隐藏
+        // 标记左侧目录树是否已完成过初始加载
+        var initialTreeLoaded = false;
+
+        // 2. 新增：根据节点的父级折叠状态动态更新树节点的显示/隐藏
         function updateTreeVisibility() {
             $('#folderTree a').each(function () {
                 var parent = $(this).attr('data-parent');
@@ -281,6 +284,16 @@
                     hasChildren[parent] = true;
                 });
                 hasChildren[''] = data.length > 0;
+
+                // 1.1 首次加载时，折叠所有层级目录，仅展开到第1层（kettle/hop/python）
+                if (!initialTreeLoaded) {
+                    $.each(data, function (_, e) {
+                        if (hasChildren[e.path]) {
+                            collapsedNodes[e.path] = true;
+                        }
+                    });
+                    initialTreeLoaded = true;
+                }
 
                 // 2. 渲染根节点（脚本仓库）
                 var rootCollapsed = !!collapsedNodes[''];
