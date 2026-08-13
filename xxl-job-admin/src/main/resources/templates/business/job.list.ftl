@@ -818,7 +818,7 @@ exit 0
                 {
                     title: I18n.jobinfo_field_category,
                     field: 'categoryId',
-                    width: '10',
+                    width: '15',
                     widthUnit: '%',
                     formatter: function (value, row, index) {
                         let result = I18n.system_empty;
@@ -837,8 +837,8 @@ exit 0
                     widthUnit: '%',
                     align: 'left',
                     formatter: function (value, row, index) {
-                        if (value.length > 20) {
-                            return '<span title="' + value + '">' + value.substr(0, 20) + '...</span>';
+                        if (value.length > 30) {
+                            return '<span title="' + value + '">' + value.substr(0, 30) + '...</span>';
                         } else {
                             return value;
                         }
@@ -847,7 +847,7 @@ exit 0
                 {
                     title: I18n.schedule_type,
                     field: 'scheduleType',
-                    width: '15',
+                    width: '13',
                     widthUnit: '%',
                     formatter: function (value, row, index) {
                         if (row.scheduleConf) {
@@ -882,7 +882,7 @@ exit 0
                 {
                     title: I18n.system_status,
                     field: 'triggerStatus',
-                    width: '10',
+                    width: '7',
                     widthUnit: '%',
                     formatter: function (value, row, index) {
                         // 调度状态：0-停止，1-运行
@@ -1489,7 +1489,7 @@ exit 0
             var _curEmail = '${currentUserEmail!}';
             if (_curName) {
                 // search field
-                $("#author").val(_curName);
+                // $("#author").val(_curName);
                 // add/update modal inputs
                 // $("#addModal .form input[name='author']").val(_curName);
                 $("#updateModal .form input[name='author']").val(_curName);

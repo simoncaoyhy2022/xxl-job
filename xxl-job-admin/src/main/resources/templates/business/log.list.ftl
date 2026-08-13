@@ -288,13 +288,14 @@
                         if (name) {
                             jobShow += name;
                         }
-                        if (jobShow.length > 20) {
-                            jobShow = jobShow.substr(0, 20) + '...';
+                        if (jobShow.length > 30) {
+                            jobShow = jobShow.substr(0, 30) + '...';
                         }
 						// show
 						return jobShow;
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_triggerTime,
 					field: 'triggerTime',
 					width: '13.5',
@@ -302,7 +303,8 @@
 					formatter: function(value, row, index) {
 						return value?moment(value).format("YYYY-MM-DD HH:mm:ss"):"";
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_triggerCode,
 					field: 'triggerCode',
 					width: '10',
@@ -318,7 +320,8 @@
 						}
 						return html;
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_triggerMsg,
 					field: 'triggerMsg',
 					width: '10',
@@ -326,7 +329,8 @@
 					formatter: function(value, row, index) {
 						return value?'<a class="logTips" href="javascript:;" >'+ I18n.system_show +'<span style="display:none;">'+ value +'</span></a>':I18n.system_empty;
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_handleTime,
 					field: 'handleTime',
 					width: '13.5',
@@ -334,7 +338,8 @@
 					formatter: function(value, row, index) {
 						return value?moment(value).format("YYYY-MM-DD HH:mm:ss"):"";
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_handleCode,
 					field: 'handleCode',
 					width: '10',
@@ -352,7 +357,8 @@
 						}
 						return html;
 					}
-				},{
+				},
+				{
 					title: I18n.joblog_field_handleMsg,
 					field: 'handleMsg',
 					width: '10',
