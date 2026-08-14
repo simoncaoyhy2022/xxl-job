@@ -1,6 +1,7 @@
 package com.xxl.job.executor.config;
 
 import org.pentaho.di.core.KettleEnvironment;
+import org.pentaho.di.core.plugins.JobEntryPluginType;
 import org.pentaho.di.core.plugins.PluginFolder;
 import org.pentaho.di.core.plugins.StepPluginType;
 import org.slf4j.Logger;
@@ -45,12 +46,32 @@ public class KettleInitializer implements InitializingBean {
                 log.info(">>>>>> 正在初始化 Kettle 环境...");
 
                 File pluginDir = ensurePluginExtracted();
+
                 if (pluginDir != null) {
-                    StepPluginType.getInstance().getPluginFolders()
-                            .add(new PluginFolder(pluginDir.getAbsolutePath(), false, true));
-                    log.info(">>>>>> 已注册 Kettle 插件目录: {}", pluginDir.getAbsolutePath());
+
+                    // 注册 Step 插件
+                    StepPluginType.getInstance()
+                            .getPluginFolders()
+                            .add(new PluginFolder(
+                                    pluginDir.getAbsolutePath(),
+                                    false,
+                                    true
+                            ));
+
+                    // 注册 Job Entry 插件
+                    JobEntryPluginType.getInstance()
+                            .getPluginFolders()
+                            .add(new PluginFolder(
+                                    pluginDir.getAbsolutePath(),
+                                    false,
+                                    true
+                            ));
+
+                    log.info(">>>>>> 已注册 Kettle 插件目录: {}",
+                            pluginDir.getAbsolutePath());
+
                 } else {
-                    log.warn(">>>>>> 未能准备 Kettle 插件目录，部分特殊步骤(如阻塞步骤)可能无法运行");
+                    log.warn(">>>>>> 未能准备 Kettle 插件目录，部分插件可能无法运行");
                 }
 
                 KettleEnvironment.init();

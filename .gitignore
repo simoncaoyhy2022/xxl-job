@@ -5,6 +5,7 @@
 .classpath
 .project
 .DS_Store
+/bin/
 
 # for frontend
 node_modules/
