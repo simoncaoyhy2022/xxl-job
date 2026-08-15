@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 public class HopExecutorService {
     private static final Logger log = LoggerFactory.getLogger(HopExecutorService.class);
 
-    private static final LogLevel LOG_LEVEL = LogLevel.ERROR;
+    private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
 
     /**
      * 执行 Hop Pipeline (.hpl)

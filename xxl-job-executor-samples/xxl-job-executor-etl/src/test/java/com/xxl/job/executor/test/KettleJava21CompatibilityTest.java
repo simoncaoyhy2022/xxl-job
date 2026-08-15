@@ -3,10 +3,18 @@ package com.xxl.job.executor.test;
 import com.xxl.job.executor.EtlExecutorApplication;
 import com.xxl.job.executor.service.HopExecutorService;
 import com.xxl.job.executor.service.KettleExecutorService;
+import org.apache.hop.core.HopEnvironment;
+import org.apache.hop.core.database.DatabasePluginType;
+import org.apache.hop.core.plugins.IPlugin;
+import org.apache.hop.core.plugins.PluginRegistry;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.pentaho.di.core.KettleEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.List;
 
 @SpringBootTest(classes = EtlExecutorApplication.class)
 public class KettleJava21CompatibilityTest {
@@ -14,10 +22,8 @@ public class KettleJava21CompatibilityTest {
     @Autowired
     private KettleExecutorService kettleExecutorService;
 
-
     @Autowired
     private HopExecutorService hopExecutorService;
-
 
 
     @Test
@@ -32,6 +38,28 @@ public class KettleJava21CompatibilityTest {
             e.printStackTrace();
         }
     }
+
+
+
+    @BeforeAll
+    public static void initHop() throws Exception {
+        // 1. 强制在任何代码前设置插件目录
+        System.setProperty("HOP_PLUGIN_BASE_FOLDERS", "/usr/xxl-job/hop-plugins");
+
+        // 2. 手动触发初始化
+        if (!HopEnvironment.isInitialized()) {
+            HopEnvironment.init();
+        }
+
+        // 3. 打印当前注册的所有数据库插件（关键排查代码！）
+        // List<IPlugin> dbPlugins = PluginRegistry.getInstance().getPlugins(DatabasePluginType.class);
+        // System.out.println("====== 当前已加载的数据库插件列表 ======");
+        // for (IPlugin p : dbPlugins) {
+        //     System.out.println("Plugin ID: " + p.getIds()[0] + ", Name: " + p.getName());
+        // }
+        // System.out.println("======================================");
+    }
+
 
     /**
      * 测试 1：验证 Kettle 环境在 Java 21 下能否成功初始化
