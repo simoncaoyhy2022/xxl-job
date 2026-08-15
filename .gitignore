@@ -40,3 +40,5 @@ logs/
 
 # 但不要忽略我们刚创建的模板文件
 !**/src/main/resources/application.properties.template
+
+xxl-job-executor-samples/xxl-job-executor-etl-副本/

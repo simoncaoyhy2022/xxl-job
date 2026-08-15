@@ -2,6 +2,7 @@ package com.xxl.job.executor.jobhandler;
 
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import com.xxl.job.executor.service.HopExecutorService;
 import com.xxl.job.executor.service.KettleExecutorService;
 import com.xxl.job.executor.service.ScriptArtifactService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,13 +11,15 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Path;
 
 /**
- * Kettle XXL-JOB 执行器 Handler
+ * Kettle / Hop XXL-JOB 执行器 Handler
  */
 @Component
 public class EtlJobHandler {
 
     @Autowired
     private KettleExecutorService kettleExecutorService;
+    @Autowired
+    private HopExecutorService hopExecutorService;
     @Autowired
     private ScriptArtifactService scriptArtifactService;
 
@@ -59,6 +62,48 @@ public class EtlJobHandler {
             XxlJobHelper.handleSuccess("Kettle Trans 执行完毕！");
         } catch (Exception e) {
             XxlJobHelper.handleFail("Kettle Trans 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 3. 执行 Hop Pipeline (.hpl)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: hopPipelineHandler
+     * 任务参数填入: .hpl 文件的绝对路径，或 scriptId=123
+     */
+    @XxlJob("hopPipelineHandler")
+    public void executePipeline() {
+        String pipelinePath = XxlJobHelper.getJobParam();
+        if (pipelinePath == null || pipelinePath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Pipeline 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            hopExecutorService.runPipeline(resolveScript(pipelinePath, "HPL"));
+            XxlJobHelper.handleSuccess("Hop Pipeline 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Hop Pipeline 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 4. 执行 Hop Workflow (.hwf)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: hopWorkflowHandler
+     * 任务参数填入: .hwf 文件的绝对路径，或 scriptId=123
+     */
+    @XxlJob("hopWorkflowHandler")
+    public void executeWorkflow() {
+        String workflowPath = XxlJobHelper.getJobParam();
+        if (workflowPath == null || workflowPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Workflow 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            hopExecutorService.runWorkflow(resolveScript(workflowPath, "HWF"));
+            XxlJobHelper.handleSuccess("Hop Workflow 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Hop Workflow 执行异常: " + e.getMessage());
         }
     }
 
