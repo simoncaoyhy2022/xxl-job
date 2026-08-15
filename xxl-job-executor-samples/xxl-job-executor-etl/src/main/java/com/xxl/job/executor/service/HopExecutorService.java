@@ -15,6 +15,7 @@ import org.apache.hop.workflow.engine.IWorkflowEngine;
 import org.apache.hop.workflow.engines.local.LocalWorkflowEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,6 +23,9 @@ public class HopExecutorService {
     private static final Logger log = LoggerFactory.getLogger(HopExecutorService.class);
 
     private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
+
+    @Value("${hop.metadata.base-folders}")
+    private String metadataFolder;
 
     /**
      * 执行 Hop Pipeline (.hpl)
@@ -37,7 +41,8 @@ public class HopExecutorService {
 
         PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
 
-        // ✅ 改为直接实例化 LocalPipelineEngine，不再依赖 metadataProvider 里的运行配置
+        // ✅ 直接实例化 LocalPipelineEngine，跳过了按 Run Configuration 选择/创建引擎的逻辑（不再需要预先在 metadata 目录配置 run-config），
+        // 但 metadataProvider 仍用于解析数据库连接等其他元数据。
         LocalPipelineEngine pipeline = new LocalPipelineEngine(pipelineMeta);
         pipeline.setMetadataProvider(metadataProvider);
         pipeline.initializeFrom(variables);
@@ -100,13 +105,10 @@ public class HopExecutorService {
             throw e;
         }
     }
-
-
     private IHopMetadataProvider buildMetadataProvider(IVariables variables) {
-        String projectMetadataFolder = "C:\\Dev\\kettle-hop\\metadata"; // 建议改为可配置项
         return new JsonMetadataProvider(
                 new HopTwoWayPasswordEncoder(),
-                projectMetadataFolder,
+                metadataFolder,
                 variables
         );
     }

@@ -27,9 +27,24 @@ public class KettleJava21CompatibilityTest {
 
 
     @Test
+    public void testRunHopWorkflow(){
+        String testHwfPath = "C:\\dev\\kettle-hop\\CS\\FG\\FG_freight_dtl.hwf";
+        try {
+            hopExecutorService.runWorkflow(testHwfPath);
+            System.out.println("✅ .hwf 脚本在 Java 21 下运行成功！");
+        } catch (Exception e) {
+            System.err.println("❌ .hwf 脚本运行失败");
+            e.printStackTrace();
+        }
+    }
+
+
+
+    @Test
     public void  testRunHopPipeline() {
         // 替换为你本地测试用的 .hpl 文件绝对路径
-        String testHplPath = "C:\\dev\\kettle-hop\\CS\\FG\\main_sync_freight_dtl.hpl";
+        // String testHplPath = "C:\\dev\\kettle-hop\\CS\\FG\\main_sync_freight_dtl.hpl";
+        String testHplPath = "C:\\dev\\kettle-hop\\CS\\FG\\update_AddTypeFromCRM.hpl";
         try {
             hopExecutorService.runPipeline(testHplPath);
             System.out.println("✅ .hpl 脚本在 Java 21 下运行成功！");

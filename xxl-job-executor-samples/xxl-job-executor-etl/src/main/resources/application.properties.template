@@ -37,6 +37,6 @@ xxl.job.executor.glueenabled=true
 xxl.job.file.api-token=YOUR_API_TOKEN
 xxl.job.executor.script-cache-path=${java.io.tmpdir}/xxl-job-script-cache
 
-### Hop plugin base folders (从官方发行包解压出的 plugins 目录，逗号分隔多个)
-### 优先读取同名环境变量 HOP_PLUGIN_BASE_FOLDERS，此处仅为兜底
+### Hop
 hop.plugin.base-folders=/usr/xxl-job/hop-plugins
+hop.metadata.base-folders=/usr/xxl-job/hop-metadata
