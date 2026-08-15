@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 public class ScriptFileController {
     // Excel files are Kettle script resources, not executable handler targets.
     private static final Set<String> KETTLE = Set.of("ktr", "kjb", "xls", "xlsx");
-    private static final Set<String> HOP = Set.of("hpl", "hwf", "hwl", "xls", "xlsx");
+    private static final Set<String> HOP = Set.of("hpl", "hwf", "hwl", "xls", "xlsx", "json");
     private static final Set<String> PYTHON = Set.of("py", "xls", "xlsx");
     @Resource
     private XxlJobScriptFileMapper scriptFileMapper;

@@ -3,6 +3,8 @@ package com.xxl.job.executor.service;
 import com.xxl.job.core.context.XxlJobHelper;
 import org.apache.hop.core.Result;
 import org.apache.hop.core.encryption.HopTwoWayPasswordEncoder;
+import org.apache.hop.core.logging.HopLogStore;
+import org.apache.hop.core.logging.ILoggingObject;
 import org.apache.hop.core.logging.LogLevel;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.variables.Variables;
@@ -24,6 +26,7 @@ public class HopExecutorService {
 
     private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
 
+    // Hop 元数据目录配置，数据库配置信息存放在此目录中，这与kettle不同
     @Value("${hop.metadata.base-folders}")
     private String metadataFolder;
 
@@ -54,8 +57,10 @@ public class HopExecutorService {
             pipeline.waitUntilFinished();
 
             Result result = pipeline.getResult();
-            XxlJobHelper.log("Hop Pipeline 运行结果: nrErrors={}, status={}",
-                    result.getNrErrors(), pipeline.getStatusDescription());
+            // 抓取 Hop 内存中的运行日志并输出到 XXL-JOB 日志
+            String hopLogText = getHopLog(pipeline);
+            XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
+
 
             if (result.getNrErrors() > 0) {
                 throw new RuntimeException("Hop [Pipeline] 执行失败，错误数: " + result.getNrErrors() + "，路径: " + pipelinePath);
@@ -92,8 +97,9 @@ public class HopExecutorService {
             // 3. startExecution 阻塞执行并直接返回 Result
             Result result = workflow.startExecution();
 
-            XxlJobHelper.log("Hop Workflow 运行结果: nrErrors={}, status={}",
-                    result.getNrErrors(), workflow.getStatusDescription());
+            // 抓取 Hop 内存中的运行日志并输出到 XXL-JOB 日志
+            String hopLogText = getHopLog(workflow);
+            XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
 
             if (result.getNrErrors() > 0) {
                 throw new RuntimeException("Hop [Workflow] 执行失败，错误数: " + result.getNrErrors() + "，路径: " + workflowPath);
@@ -105,11 +111,24 @@ public class HopExecutorService {
             throw e;
         }
     }
+
     private IHopMetadataProvider buildMetadataProvider(IVariables variables) {
         return new JsonMetadataProvider(
                 new HopTwoWayPasswordEncoder(),
                 metadataFolder,
                 variables
         );
+    }
+
+    /**
+     * 获取 Hop 内存缓冲区中的运行日志
+     */
+    private String getHopLog(ILoggingObject loggingObject) {
+        if (loggingObject == null) {
+            return "";
+        }
+        String logChannelId = loggingObject.getLogChannelId();
+        // 从 HopLogStore 的 Appender 中获取指定 Channel 的日志内容
+        return HopLogStore.getAppender().getBuffer(logChannelId, false).toString();
     }
 }

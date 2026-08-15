@@ -39,4 +39,4 @@ xxl.job.executor.script-cache-path=${java.io.tmpdir}/xxl-job-script-cache
 
 ### Hop
 hop.plugin.base-folders=/usr/xxl-job/hop-plugins
-hop.metadata.base-folders=/usr/xxl-job/hop-metadata
+hop.metadata.base-folders=/usr/xxl-job/data/script-repository/hop/metadata

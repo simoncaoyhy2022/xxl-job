@@ -23,10 +23,12 @@
             width: 6px;
             height: 6px;
         }
+
         #folderTree::-webkit-scrollbar-thumb {
             background: #dcdcdc;
             border-radius: 3px;
         }
+
         #folderTree::-webkit-scrollbar-thumb:hover {
             background: #b0b0b0;
         }
@@ -169,8 +171,8 @@
                             </div>
                             <div class="form-group"><label class="col-sm-3 control-label">脚本类型 *</label>
                                 <div class="col-sm-8"><select name="scriptType" class="form-control">
-                                        <option value="KETTLE">KETTLE (.ktr/.kjb)</option>
-                                        <option value="HOP">HOP (.hpl/.hwf/.hwl)</option>
+                                        <option value="KETTLE">KETTLE (.ktr/.kjb/.xlsx)</option>
+                                        <option value="HOP">HOP (.hpl/.hwf/.xlsx/.json)</option>
                                         <option value="PYTHON">PYTHON (.py)</option>
                                     </select></div>
                             </div>
