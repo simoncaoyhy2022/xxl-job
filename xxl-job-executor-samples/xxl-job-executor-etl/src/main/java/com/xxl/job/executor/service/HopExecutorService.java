@@ -2,14 +2,13 @@ package com.xxl.job.executor.service;
 
 import com.xxl.job.core.context.XxlJobHelper;
 import org.apache.hop.core.Result;
+import org.apache.hop.core.encryption.HopTwoWayPasswordEncoder;
 import org.apache.hop.core.logging.LogLevel;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.variables.Variables;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
-import org.apache.hop.metadata.serializer.memory.MemoryMetadataProvider;
+import org.apache.hop.metadata.serializer.json.JsonMetadataProvider;
 import org.apache.hop.pipeline.PipelineMeta;
-import org.apache.hop.pipeline.engine.IPipelineEngine;
-import org.apache.hop.pipeline.engine.PipelineEngineFactory;
 import org.apache.hop.pipeline.engines.local.LocalPipelineEngine;
 import org.apache.hop.workflow.WorkflowMeta;
 import org.apache.hop.workflow.engine.IWorkflowEngine;
@@ -22,7 +21,7 @@ import org.springframework.stereotype.Service;
 public class HopExecutorService {
     private static final Logger log = LoggerFactory.getLogger(HopExecutorService.class);
 
-    private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
+    private static final LogLevel LOG_LEVEL = LogLevel.ERROR;
 
     /**
      * 执行 Hop Pipeline (.hpl)
@@ -33,7 +32,8 @@ public class HopExecutorService {
         XxlJobHelper.log(">>>>>> 开始执行 Hop Pipeline: {}", pipelinePath);
 
         IVariables variables = Variables.getADefaultVariableSpace();
-        IHopMetadataProvider metadataProvider = buildMetadataProvider();
+
+        IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
 
         PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
 
@@ -72,7 +72,7 @@ public class HopExecutorService {
         XxlJobHelper.log(">>>>>> 开始执行 Hop Workflow: {}", workflowPath);
 
         IVariables variables = Variables.getADefaultVariableSpace();
-        IHopMetadataProvider metadataProvider = buildMetadataProvider();
+        IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
 
         // 1. 构造 WorkflowMeta (参数顺序: variables, filename, metadataProvider)
         WorkflowMeta workflowMeta = new WorkflowMeta(variables, workflowPath, metadataProvider);
@@ -101,7 +101,13 @@ public class HopExecutorService {
         }
     }
 
-    private IHopMetadataProvider buildMetadataProvider() {
-        return new MemoryMetadataProvider();
+
+    private IHopMetadataProvider buildMetadataProvider(IVariables variables) {
+        String projectMetadataFolder = "C:\\Dev\\kettle-hop\\metadata"; // 建议改为可配置项
+        return new JsonMetadataProvider(
+                new HopTwoWayPasswordEncoder(),
+                projectMetadataFolder,
+                variables
+        );
     }
 }
