@@ -60,13 +60,14 @@
             <version>1.3.1</version>
         </dependency>
 
-        <!-- hop-core -->
+        <!-- hop-ui -->
         <dependency>
             <groupId>org.apache.hop</groupId>
             <artifactId>hop-ui</artifactId>
             <version>${hop.version}</version>
         </dependency>
 
+        <!-- hop-core -->
         <dependency>
             <groupId>org.apache.hop</groupId>
             <artifactId>hop-core</artifactId>
@@ -260,7 +261,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- Kettle ExcelWriterStep 依赖 POI-->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
@@ -385,7 +385,6 @@
             <artifactId>javax.mail</artifactId>
             <version>1.6.2</version>
         </dependency>
-
 
     </dependencies>
 

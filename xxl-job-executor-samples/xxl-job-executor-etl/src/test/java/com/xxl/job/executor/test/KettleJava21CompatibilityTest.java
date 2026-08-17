@@ -44,7 +44,7 @@ public class KettleJava21CompatibilityTest {
     public void  testRunHopPipeline() {
         // 替换为你本地测试用的 .hpl 文件绝对路径
         // String testHplPath = "C:\\dev\\kettle-hop\\CS\\FG\\main_sync_freight_dtl.hpl";
-        String testHplPath = "C:\\dev\\kettle-hop\\CS\\FG\\update_AddTypeFromCRM.hpl";
+        String testHplPath = "C:\\dev\\kettle-hop\\fact\\paper\\库存和交易\\in\\paper_in_pm.hpl";
         try {
             hopExecutorService.runPipeline(testHplPath);
             System.out.println("✅ .hpl 脚本在 Java 21 下运行成功！");
