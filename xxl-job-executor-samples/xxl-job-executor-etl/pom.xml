@@ -388,12 +388,41 @@
 
     </dependencies>
 
+<!--    <build>-->
+<!--        <plugins>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--                <version>${spring-boot.version}</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <goals>-->
+<!--                            <goal>repackage</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+<!--    </build>-->
+
     <build>
         <plugins>
+            <!-- 1. Spring Boot 瘦包插件：不打入任何第三方依赖，并开启 PropertiesLauncher -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
+                <configuration>
+                    <!-- 必须设置为 ZIP 布局，以便支持 -Dloader.path -->
+                    <layout>ZIP</layout>
+                    <!-- 排除全部依赖，只打业务代码 -->
+                    <includes>
+                        <include>
+                            <groupId>nothing</groupId>
+                            <artifactId>nothing</artifactId>
+                        </include>
+                    </includes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -402,8 +431,31 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- 2. 依赖复制插件：把所有依赖提取到 target/lib 目录供服务端使用 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                            <!-- 导出时排除 Windows 专属 SWT，避免上传多余无用包到 Linux -->
+                            <excludeArtifactIds>
+                                org.eclipse.swt.win32.win32.x86_64
+                            </excludeArtifactIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
 
 </project>
