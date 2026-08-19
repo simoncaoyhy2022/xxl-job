@@ -39,14 +39,14 @@
 		<jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
 
 		<!-- spring -->
-		<spring-boot.version>4.1.0</spring-boot.version>
-		<spring.version>7.0.8</spring.version>
+		<spring-boot.version>3.4.2</spring-boot.version>
+		<spring.version>6.2.2</spring.version>
 		<!-- mybatis & db -->
-		<mybatis-spring-boot-starter.version>4.0.1</mybatis-spring-boot-starter.version>
-		<mysql-connector-j.version>9.7.0</mysql-connector-j.version>
+		<mybatis-spring-boot-starter.version>3.0.4</mybatis-spring-boot-starter.version>
+		<mysql-connector-j.version>8.0.33</mysql-connector-j.version>
 
 		<!-- net -->
-		<netty.version>4.2.15.Final</netty.version>
+		<netty.version>4.1.116.Final</netty.version>
 		<!-- groovy -->
 		<groovy.version>5.0.6</groovy.version>
 
