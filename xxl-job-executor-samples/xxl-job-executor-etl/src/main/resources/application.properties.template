@@ -40,3 +40,52 @@ xxl.job.executor.script-cache-path=${java.io.tmpdir}/xxl-job-script-cache
 ### Hop
 hop.plugin.base-folders=/usr/xxl-job/hop-plugins
 hop.metadata.base-folders=/usr/xxl-job/data/script-repository/hop/metadata
+
+
+### ---------------- target 报表库（唯一 Spring 数据源，MyBatis 直连） ----------------
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url=jdbc:mysql://172.18.28.1:3306/pmcdwraw?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+spring.datasource.username=user
+spring.datasource.password=123456
+
+spring.datasource.initial-size=5
+spring.datasource.min-idle=5
+spring.datasource.max-active=20
+spring.datasource.max-wait=10000
+spring.datasource.validation-query=SELECT 1
+spring.datasource.test-while-idle=true
+spring.datasource.test-on-borrow=false
+spring.datasource.test-on-return=false
+
+### mybatis
+mybatis.mapper-locations=classpath:/mapper/**/*Mapper.xml
+mybatis.type-aliases-package=com.xxl.job.executor.cdc.model
+
+### ---------------- CDC 源库列表（SQL Server 2008，配置极少改动，直接写文件） ----------------
+# 每新增一个站点，追加一组 etl.cdc.sources[N].* 即可，无需改代码/重新打包
+etl.cdc.sources[0].id=szbp
+etl.cdc.sources[0].jdbc-url=jdbc:sqlserver://172.16.53.1:1433;databaseName=SZBPERPRUN;encrypt=false
+etl.cdc.sources[0].username=sa
+etl.cdc.sources[0].password=123456
+etl.cdc.sources[0].enabled=true
+
+etl.cdc.sources[1].id=tcbp
+etl.cdc.sources[1].jdbc-url=jdbc:sqlserver://172.16.53.2:1433;databaseName=tcbperprun;encrypt=false
+etl.cdc.sources[1].username=sa
+etl.cdc.sources[1].password=123456
+etl.cdc.sources[1].enabled=true
+
+etl.cdc.sources[2].id=csbp
+etl.cdc.sources[2].jdbc-url=jdbc:sqlserver://172.16.53.3:1433;databaseName=csbperprun;encrypt=false
+etl.cdc.sources[2].username=sa
+etl.cdc.sources[2].password=123456
+etl.cdc.sources[2].enabled=true
+
+
+### 源库连接池参数（对所有 source 生效，单独放一组更省配置行数）
+etl.cdc.pool.initial-size=1
+etl.cdc.pool.min-idle=1
+etl.cdc.pool.max-active=3
+etl.cdc.pool.max-wait=5000
+etl.cdc.pool.validation-query=SELECT 1
