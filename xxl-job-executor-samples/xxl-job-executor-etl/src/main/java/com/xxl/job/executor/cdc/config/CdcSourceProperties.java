@@ -43,6 +43,8 @@ public class CdcSourceProperties {
         private String password;
         private String driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
         private boolean enabled = true;
+        // 生产工厂标识
+        private boolean prod;
 
         public String getId() {
             return id;
@@ -90,6 +92,14 @@ public class CdcSourceProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public boolean isProd() {
+            return prod;
+        }
+
+        public void setProd(boolean prod) {
+            this.prod = prod;
         }
     }
 
