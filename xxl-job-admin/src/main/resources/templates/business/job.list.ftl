@@ -21,11 +21,12 @@
         <#-- 查询区域 -->
         <div class="box" style="margin-bottom:9px;">
             <div class="box-body">
+
                 <div class="row" id="data_filter">
 
-                    <div class="col-xs-3">
+                    <div class="col-xs-2" style="width: 20%;">
                         <div class="input-group">
-                            <span class="input-group-addon">${I18n.jobinfo_field_jobgroup}</span>
+                            <span class="input-group-addon" style="letter-spacing: 0.5em; padding-right: calc(12px - 0.5em);">${I18n.jobinfo_field_jobgroup}</span>
                             <select class="form-control" id="jobGroup">
                                 <#list JobGroupList as group>
                                     <option value="${group.id}"
@@ -34,8 +35,9 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-xs-1">
+                    <div class="col-xs-2" style="width: 16%;">
                         <div class="input-group">
+                            <span class="input-group-addon">任务状态</span>
                             <select class="form-control" id="triggerStatus">
                                 <option value="-1">${I18n.system_all}</option>
                                 <option value="0">${I18n.jobinfo_opt_stop}</option>
@@ -43,35 +45,39 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-xs-2">
+                    <div class="col-xs-2" style="width: 16%;">
                         <div class="input-group">
+                            <span class="input-group-addon">任务名称</span>
                             <input type="text" class="form-control" id="name"
                                    placeholder="${I18n.system_please_input}${I18n.jobinfo_field_jobdesc}">
                         </div>
                     </div>
-                    <div class="col-xs-2">
+                    <div class="col-xs-2" style="width: 16%;">
                         <div class="input-group">
+                            <span class="input-group-addon">处理函数</span>
                             <input type="text" class="form-control" id="executorHandler"
                                    placeholder="${I18n.system_please_input}JobHandler">
                         </div>
                     </div>
-                    <div class="col-xs-2">
+                    <div class="col-xs-2" style="width: 16%;">
                         <div class="input-group">
+                            <span class="input-group-addon">负责人</span>
                             <input type="text" class="form-control" id="author"
                                    placeholder="${I18n.system_please_input}${I18n.jobinfo_field_author}">
                         </div>
                     </div>
 
-                    <div class="col-xs-1">
+                    <div class="col-xs-1"  style="width: 8%;">
                         <button class="btn btn-block btn-primary searchBtn">${I18n.system_search}</button>
                     </div>
-                    <div class="col-xs-1">
+                    <div class="col-xs-1"  style="width: 8%;">
                         <button class="btn btn-block btn-default resetBtn">${I18n.system_reset}</button>
                     </div>
+
                 </div>
                 <#-- 追加在 data_filter 原 row 结束的 </div> 之后 -->
                 <div class="row" style="margin-top:9px;" id="data_filter_row2">
-                    <div class="col-xs-3">
+                    <div class="col-xs-2" style="width: 20%;">
                         <div class="input-group">
                             <span class="input-group-addon">${I18n.jobinfo_field_category}</span>
                             <select class="form-control" id="categoryId">
@@ -83,6 +89,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
