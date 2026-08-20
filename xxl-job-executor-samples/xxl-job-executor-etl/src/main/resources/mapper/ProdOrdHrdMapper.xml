@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.executor.cdc.mapper.ProdOrdHdrMapper">
+
+    <insert id="upsertProdOrdHdr" parameterType="map">
+        MERGE t_prodordhdr_copy1 AS target
+        USING (VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (#{sourceId}, #{row.F_ID}, #{row.F_DOCDATE}, /* ... */)
+        </foreach>
+        ) AS src(source_id, F_ID, F_DOCDATE /* ... */)
+        ON target.source_id = src.source_id AND target.F_ID = src.F_ID
+        WHEN MATCHED THEN UPDATE SET F_DOCDATE = src.F_DOCDATE /* ... */
+        WHEN NOT MATCHED THEN INSERT (source_id, F_ID, F_DOCDATE /* ... */)
+        VALUES (src.source_id, src.F_ID, src.F_DOCDATE /* ... */);
+    </insert>
+    <delete id="deleteProdOrdHdr">
+        DELETE FROM t_prodordhdr_copy1
+        WHERE source_id = #{sourceId} AND F_ID IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+
+</mapper>
