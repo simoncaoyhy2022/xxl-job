@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.executor.cdc.mapper.SalesOrdDtlMapper">
+
+    <insert id="upsertSalesOrdDtl" parameterType="map">
+        MERGE fact_sales_order_dtl_copy1 AS target
+        USING (VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (#{row.BP}, #{row.F_SALESID}, #{row.F_DOCDATE}, /* ... */)
+        </foreach>
+        ) AS src(BP, F_SALESID, F_DOCDATE /* ... */)
+        ON target.BP = src.BP AND target.F_SALESID = src.F_SALESID AND target.F_ITEMID=src.F_ITEMID
+        WHEN MATCHED THEN UPDATE SET F_DOCDATE = src.F_DOCDATE /* ... */
+        WHEN NOT MATCHED THEN INSERT (BP, F_SALESID, F_DOCDATE /* ... */)
+        VALUES (src.BP, src.F_SALESID, src.F_DOCDATE /* ... */);
+    </insert>
+
+    <delete id="deleteSalesOrdDtl">
+        DELETE FROM fact_sales_order_dtl_copy1
+        WHERE BP = #{BP} AND F_SALESID IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+
+</mapper>
