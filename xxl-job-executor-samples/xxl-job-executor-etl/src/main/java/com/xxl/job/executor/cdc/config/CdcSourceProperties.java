@@ -43,7 +43,7 @@ public class CdcSourceProperties {
         private String password;
         private String driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
         private boolean enabled = true;
-        // 生产工厂标识
+        // 生产工厂或虚拟工厂
         private boolean prod;
 
         public String getId() {

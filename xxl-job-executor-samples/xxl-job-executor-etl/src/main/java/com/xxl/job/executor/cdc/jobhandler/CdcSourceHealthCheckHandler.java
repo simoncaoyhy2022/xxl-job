@@ -2,6 +2,7 @@ package com.xxl.job.executor.cdc.jobhandler;
 
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import com.xxl.job.executor.cdc.config.CdcSourceProperties;
 import com.xxl.job.executor.cdc.config.SourceDataSourceRegistry;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,9 @@ public class CdcSourceHealthCheckHandler {
 
     @Resource
     private SourceDataSourceRegistry registry;
+
+    @Resource
+    private CdcSourceProperties properties;
 
     @XxlJob("cdcSourceHealthCheck")
     public void check() {
@@ -22,4 +26,20 @@ public class CdcSourceHealthCheckHandler {
             }
         }
     }
+
+    @XxlJob("cdcSourceHealthCheckIsProd")
+    public void checkIsProd() {
+        properties.getSources().stream()
+                .filter(sourceConfig -> sourceConfig.isProd() || sourceConfig.getId().equals("pmc"))
+                .forEach(cfg -> {
+                    try (var conn = registry.get(cfg.getId()).getConnection()) {
+                        XxlJobHelper.log("source[{}] OK, catalog={}", cfg.getId(), conn.getCatalog());
+                    } catch (Exception e) {
+                        XxlJobHelper.log("source[{}] FAIL: {}", cfg.getId(), e.getMessage());
+                    }
+                });
+
+    }
+
+
 }

@@ -69,19 +69,21 @@ etl.cdc.sources[0].jdbc-url=jdbc:sqlserver://172.16.53.1:1433;databaseName=SZBPE
 etl.cdc.sources[0].username=sa
 etl.cdc.sources[0].password=123456
 etl.cdc.sources[0].enabled=true
+etl.cdc.sources[0].prod=true
 
 etl.cdc.sources[1].id=tcbp
 etl.cdc.sources[1].jdbc-url=jdbc:sqlserver://172.16.53.2:1433;databaseName=tcbperprun;encrypt=false
 etl.cdc.sources[1].username=sa
 etl.cdc.sources[1].password=123456
 etl.cdc.sources[1].enabled=true
+etl.cdc.sources[1].prod=true
 
 etl.cdc.sources[2].id=csbp
 etl.cdc.sources[2].jdbc-url=jdbc:sqlserver://172.16.53.3:1433;databaseName=csbperprun;encrypt=false
 etl.cdc.sources[2].username=sa
 etl.cdc.sources[2].password=123456
 etl.cdc.sources[2].enabled=true
-
+etl.cdc.sources[2].prod=true
 
 ### 源库连接池参数（对所有 source 生效，单独放一组更省配置行数）
 etl.cdc.pool.initial-size=1
