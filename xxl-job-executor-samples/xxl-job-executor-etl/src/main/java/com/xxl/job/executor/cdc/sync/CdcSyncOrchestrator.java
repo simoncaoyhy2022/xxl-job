@@ -64,7 +64,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.PRODORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
-                // todo:排序
+                // todo:添排序
                 prodOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -77,7 +77,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
-                // todo：待添加条件
+                // todo：待添加过滤条件
                 salesOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -90,7 +90,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
-                // todo：待添加条件
+                // todo：待添加过滤条件
                 salesOrdDtlMapper.upsertBatch(rows);
             }
 
