@@ -6,6 +6,6 @@ import java.util.Map;
 public interface SalesOrdDtlMapper {
     int upsertBatch(List<Map<String, Object>> list);
 
-    int deleteSalesOrdDtl(List<Map<String, Object>> list);
+    int deleteBatch(List<Map<String, Object>> list);
 
 }

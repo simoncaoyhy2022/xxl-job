@@ -53,7 +53,7 @@
     </insert>
 
     <!-- 【修正后的删除方法】MySQL 8 完全支持 (BP, F_SALESID, F_ITEMID) 联合条件 -->
-    <delete id="deleteSalesOrdDtl" parameterType="java.util.List">
+    <delete id="deleteBatch" parameterType="java.util.List">
         DELETE FROM fact_sales_order_dtl_copy1
         WHERE (F_SALESID, F_ITEMID) IN
         <foreach collection="list" item="item" open="(" separator="," close=")">
