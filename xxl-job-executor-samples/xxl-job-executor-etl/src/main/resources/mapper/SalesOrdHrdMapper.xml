@@ -3,23 +3,93 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.xxl.job.executor.cdc.mapper.SalesOrdHdrMapper">
 
-    <insert id="upsertSalesOrdHdr" parameterType="map">
-        MERGE fact_sales_order_hdr_copy1 AS target
-        USING (VALUES
-        <foreach collection="rows" item="row" separator=",">
-            (#{row.BP}, #{row.F_ID}, #{row.F_DOCDATE}, /* ... */)
+    <!-- 批量 Upsert：以目标表主键 F_SALESID 自动判断冲突 -->
+    <insert id="upsertBatch" parameterType="java.util.List">
+        INSERT INTO fact_sales_order_hdr_copy1 (
+        BP,
+        F_SALESID,
+        F_CUSTORDID,
+        F_DOCDATE,
+        F_Date,
+        F_CUSTID,
+        F_CreatedBY,
+        F_EDITBY,
+        F_CONFBY,
+        F_CloseBy,
+        F_ISCONF,
+        F_ISCLOSE,
+        F_ITEMID,
+        F_DOCQTY,
+        F_TRDTYPE,
+        F_PRNVER,
+        F_TAXRATE,
+        F_CURRTYPE,
+        F_DRAWER,
+        F_LEVELID,
+        F_CUSTLEVELID,
+        F_dataSource,
+        f_updateTime
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.BP},
+            #{item.F_ID},
+            #{item.F_CUSTORDID},
+            #{item.F_DOCDATE},
+            #{item.F_Date},
+            #{item.F_CUSTID},
+            #{item.F_CreatedBY},
+            #{item.F_EDITBY},
+            #{item.F_CONFBY},
+            #{item.F_CloseBy},
+            #{item.F_ISCONF},
+            #{item.F_ISCLOSE},
+            #{item.F_ITEMID},
+            #{item.F_DOCQTY},
+            #{item.F_TRDTYPE},
+            #{item.F_PRNVER},
+            #{item.F_TAXRATE},
+            #{item.F_CURRTYPE},
+            #{item.F_DRAWER},
+            #{item.F_LEVELID},
+            #{item.F_CUSTLEVELID},
+            #{item.F_dataSource},
+            #{item.f_updateTime}
+            )
         </foreach>
-        ) AS src(BP, F_ID, F_DOCDATE /* ... */)
-        ON target.BP = src.BP AND target.F_SALESID = src.F_ID
-        WHEN MATCHED THEN UPDATE SET F_DOCDATE = src.F_DOCDATE /* ... */
-        WHEN NOT MATCHED THEN INSERT (BP, F_SALESID, F_DOCDATE /* ... */)
-        VALUES (src.BP, src.F_SALESID, src.F_DOCDATE /* ... */);
+        AS new_data
+        ON DUPLICATE KEY UPDATE
+        BP = new_data.BP,
+        F_CUSTORDID = new_data.F_CUSTORDID,
+        F_DOCDATE = new_data.F_DOCDATE,
+        F_Date = new_data.F_Date,
+        F_CUSTID = new_data.F_CUSTID,
+        F_CreatedBY = new_data.F_CreatedBY,
+        F_EDITBY = new_data.F_EDITBY,
+        F_CONFBY = new_data.F_CONFBY,
+        F_CloseBy = new_data.F_CloseBy,
+        F_ISCONF = new_data.F_ISCONF,
+        F_ISCLOSE = new_data.F_ISCLOSE,
+        F_ITEMID = new_data.F_ITEMID,
+        F_DOCQTY = new_data.F_DOCQTY,
+        F_TRDTYPE = new_data.F_TRDTYPE,
+        F_PRNVER = new_data.F_PRNVER,
+        F_TAXRATE = new_data.F_TAXRATE,
+        F_CURRTYPE = new_data.F_CURRTYPE,
+        F_DRAWER = new_data.F_DRAWER,
+        F_LEVELID = new_data.F_LEVELID,
+        F_CUSTLEVELID = new_data.F_CUSTLEVELID,
+        F_dataSource = new_data.F_dataSource,
+        f_updateTime = new_data.f_updateTime
     </insert>
-    <delete id="deleteSalesOrdHdr">
-        DELETE FROM fact_sales_order_hdr_copy1
-        WHERE BP = #{BP} AND F_SALESID IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
-    </delete>
 
+    <!-- 批量删除：直接依据单主键 F_SALESID 删除 -->
+    <delete id="deleteBatch" parameterType="java.util.List">
+        DELETE FROM fact_sales_order_hdr_copy1
+        WHERE F_SALESID IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.F_ID}
+        </foreach>
+    </delete>
 
 </mapper>

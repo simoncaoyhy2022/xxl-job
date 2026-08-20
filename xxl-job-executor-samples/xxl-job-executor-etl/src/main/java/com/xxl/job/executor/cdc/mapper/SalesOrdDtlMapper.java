@@ -1,13 +1,11 @@
 package com.xxl.job.executor.cdc.mapper;
 
-import org.apache.ibatis.annotations.Param;
-
 import java.util.List;
 import java.util.Map;
 
 public interface SalesOrdDtlMapper {
-    int upsertSalesOrdDtl(@Param("rows") List<Map<String, Object>> rows);
+    int upsertBatch(List<Map<String, Object>> list);
 
-    int deleteSalesOrdDtl(@Param("BP") String BP, @Param("ids") List<String> ids);
+    int deleteSalesOrdDtl(List<Map<String, Object>> list);
 
 }

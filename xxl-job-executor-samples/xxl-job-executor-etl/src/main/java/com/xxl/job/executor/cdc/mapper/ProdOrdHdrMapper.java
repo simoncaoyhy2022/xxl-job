@@ -7,8 +7,8 @@ import java.util.Map;
 
 public interface ProdOrdHdrMapper {
 
-    int upsertProdOrdHdr(@Param("rows") List<Map<String, Object>> rows);
+    int upsertBatch(List<Map<String, Object>> list);
 
-    int deleteProdOrdHdr(@Param("BP") String BP, @Param("ids") List<String> ids);
+    int deleteBatch(List<Map<String, Object>> list);
 
 }
