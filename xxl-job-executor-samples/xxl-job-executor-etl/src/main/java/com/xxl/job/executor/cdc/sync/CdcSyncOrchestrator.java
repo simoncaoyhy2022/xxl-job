@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /**
  * CDC 增量同步编排器
@@ -104,11 +105,18 @@ public class CdcSyncOrchestrator {
                 .map(CdcSourceProperties.SourceConfig::getId)
                 .toList();
 
-        for (String bp : bps) {
-            for (CdcTableDef def : CdcTableDef.ALL) {
-                syncOne(bp, def);
+        // 使用虚拟线程池并行同步每个源库的全部表，避免单线程顺序执行过慢
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (String bp : bps) {
+                executor.submit(() -> {
+                    for (CdcTableDef def : CdcTableDef.ALL) {
+                        syncOne(bp, def);
+                    }
+                });
             }
-        }
+        } // 退出 try 块时自动阻塞等待所有 bp 的虚拟线程全部执行完成
+
+
     }
 
     /**

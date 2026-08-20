@@ -50,7 +50,7 @@ public class CdcTableDef {
     public static final CdcTableDef SALESORDHDR = new CdcTableDef(
             "dbo_t_salesordhdr",
             new String[]{
-                    "F_ID", "F_CUSTORDID", "F_DOCDATE", "F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
+                    "F_ID", "F_CUSTORDID", "F_DOCDATE", "cast(F_DOCDATE as date) as F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
                     "F_ISCLOSE", "F_ITEMID", "F_DOCQTY", "F_TRDTYPE", "F_PRNVER", "F_TAXRATE", "F_CURRTYPE", "F_DRAWER", "F_LEVELID", "F_CUSTLEVELID"
             },
             new String[]{"F_ID"},

@@ -34,12 +34,12 @@ public class CdcSyncJobHandler {
                 String value = param.trim();
                 int idx = value.indexOf(':');
                 if (idx < 0) {
-                    XxlJobHelper.log(">>>>>> 开始 CDC 增量同步, source={}", value);
+                    XxlJobHelper.log(">>>>>> 开始 CDC 增量同步, BP={}", value);
                     cdcSyncOrchestrator.syncSource(value);
                 } else {
                     String sourceId = value.substring(0, idx).trim();
                     String captureInstance = value.substring(idx + 1).trim();
-                    XxlJobHelper.log(">>>>>> 开始 CDC 增量同步, source={}, captureInstance={}", sourceId, captureInstance);
+                    XxlJobHelper.log(">>>>>> 开始 CDC 增量同步, BP={}, captureInstance={}", sourceId, captureInstance);
                     cdcSyncOrchestrator.syncTable(sourceId, captureInstance);
                 }
             }
