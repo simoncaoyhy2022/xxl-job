@@ -36,7 +36,7 @@ import java.util.Map;
 @Component
 public class CdcSyncOrchestrator {
     private static final Logger logger = LoggerFactory.getLogger(CdcSyncOrchestrator.class);
-    private static final int BATCH_SIZE = 500;
+    private static final int MAX_PARAMS_PER_BATCH = 3000;
 
     @Resource
     private SourceDataSourceRegistry registry;
@@ -177,10 +177,12 @@ public class CdcSyncOrchestrator {
                     }
                 }
 
-                for (List<Map<String, Object>> batch : partition(upserts, BATCH_SIZE)) {
+                int size = batchSizeFor(def);// 计算每批次大小，避免 SQL 参数过多
+
+                for (List<Map<String, Object>> batch : partition(upserts, size)) {
                     handler.upsert(batch);
                 }
-                for (List<Map<String, Object>> batch : partition(deletes, BATCH_SIZE)) {
+                for (List<Map<String, Object>> batch : partition(deletes, size)) {
                     handler.delete(batch);
                 }
 
@@ -206,6 +208,11 @@ public class CdcSyncOrchestrator {
             result.add(list.subList(i, Math.min(i + size, list.size())));
         }
         return result;
+    }
+
+    private int batchSizeFor(CdcTableDef def) {
+        int paramsPerRow = def.getColumns().length + 2; // + BP + dataSource/updateTime 等固定列
+        return Math.max(50, MAX_PARAMS_PER_BATCH / paramsPerRow);
     }
 
     private void log(String pattern, Object... args) {
