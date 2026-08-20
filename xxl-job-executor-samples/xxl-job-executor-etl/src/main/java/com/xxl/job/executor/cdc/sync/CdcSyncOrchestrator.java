@@ -1,4 +1,3 @@
-// xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/sync/CdcSyncOrchestrator.java
 package com.xxl.job.executor.cdc.sync;
 
 import com.xxl.job.core.context.XxlJobHelper;
@@ -22,7 +21,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 /**
  * CDC 增量同步编排器
@@ -94,10 +96,37 @@ public class CdcSyncOrchestrator {
                 salesOrdDtlMapper.deleteBatch(rows);
             }
         });
+
+        // pmc.dbo_t_salesordhdr
+        handlerMap.put("pmc." + CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
+            @Override
+            public void upsert(List<Map<String, Object>> rows) {
+                salesOrdHdrMapper.upsertBatch(rows);
+            }
+
+            @Override
+            public void delete(List<Map<String, Object>> rows) {
+                salesOrdHdrMapper.deleteBatch(rows);
+            }
+        });
+
+        // pmc.dbo_t_salesorddtl
+        handlerMap.put("pmc." + CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
+            @Override
+            public void upsert(List<Map<String, Object>> rows) {
+                salesOrdDtlMapper.upsertBatch(rows);
+            }
+
+            @Override
+            public void delete(List<Map<String, Object>> rows) {
+                salesOrdDtlMapper.deleteBatch(rows);
+            }
+        });
     }
 
     /**
      * 同步所有生产厂数据库 x 全部表
+     * 针对每个数据源 (bp) 启用虚拟线程并发，并收集所有子任务异常以确保失败感知
      */
     public void syncAllProd() {
         List<String> bps = cdcSourceProperties.getSources().stream()
@@ -105,18 +134,37 @@ public class CdcSyncOrchestrator {
                 .map(CdcSourceProperties.SourceConfig::getId)
                 .toList();
 
-        // 使用虚拟线程池并行同步每个源库的全部表，避免单线程顺序执行过慢
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            for (String bp : bps) {
-                executor.submit(() -> {
-                    for (CdcTableDef def : CdcTableDef.ALL) {
-                        syncOne(bp, def);
-                    }
-                });
+            // 1. 提交所有 bp 任务并收集 Future
+            List<? extends Future<?>> futures = bps.stream()
+                    .map(bp -> executor.submit(() -> {
+                        for (CdcTableDef def : CdcTableDef.ALL) {
+                            syncOne(bp, def);
+                        }
+                    }))
+                    .toList();
+
+            // 2. 收集各虚拟线程的执行异常
+            List<Throwable> errors = new ArrayList<>();
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (ExecutionException e) {
+                    errors.add(e.getCause() != null ? e.getCause() : e);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("CDC 任务被中断", e);
+                }
             }
-        } // 退出 try 块时自动阻塞等待所有 bp 的虚拟线程全部执行完成
 
-
+            // 3. 若有任何一个 bp 同步失败，抛出汇总异常，触发 JobHandler 失败标记
+            if (!errors.isEmpty()) {
+                String errorMsg = errors.stream()
+                        .map(Throwable::getMessage)
+                        .collect(Collectors.joining("; "));
+                throw new RuntimeException("CDC 同步存在失败任务: " + errorMsg);
+            }
+        }
     }
 
     /**
@@ -124,6 +172,7 @@ public class CdcSyncOrchestrator {
      */
     public void syncSource(String bp) {
         for (CdcTableDef def : CdcTableDef.ALL) {
+            // def.get
             syncOne(bp, def);
         }
     }

@@ -44,23 +44,23 @@ public class CdcTableDef {
                     "F_IsBPCorrugatorAccepted", "F_BPCorrugatorAcceptBy", "F_BPCorrugatorUploaded"
             },
             new String[]{"F_ID"},
-            "t_prodordhdr_copy1"
+            "t_prodordhdr"
     );
 
     public static final CdcTableDef SALESORDHDR = new CdcTableDef(
             "dbo_t_salesordhdr",
             new String[]{
-                    "F_ID", "F_CUSTORDID", "F_DOCDATE", "cast(F_DOCDATE as date) as F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
+                    "F_ID", "F_CUSTORDID", "F_DOCDATE", "F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
                     "F_ISCLOSE", "F_ITEMID", "F_DOCQTY", "F_TRDTYPE", "F_PRNVER", "F_TAXRATE", "F_CURRTYPE", "F_DRAWER", "F_LEVELID", "F_CUSTLEVELID"
             },
             new String[]{"F_ID"},
-            "fact_sales_order_hdr_copy1"
+            "fact_sales_order_hdr"
     );
     public static final CdcTableDef SALESORDDTL = new CdcTableDef(
             "dbo_t_salesorddtl",
             new String[]{"F_SALESID", "F_ITEMID", "F_DOCQTY", "F_UNITAMT", "F_BOARDLEN", "F_BOARDWID", "F_PRICEBOARDWID", "F_BPINV", "F_ISINV", "F_INVQTY"},
             new String[]{"F_SALESID", "F_ITEMID"},
-            "fact_sales_order_dtl_copy1"
+            "fact_sales_order_dtl"
     );
 
     public static final List<CdcTableDef> ALL = List.of(PRODORDHDR, SALESORDHDR, SALESORDDTL);
