@@ -15,6 +15,22 @@ public class CdcTableDef {
         this.targetTable = targetTable;
     }
 
+    public String getCaptureInstance() {
+        return captureInstance;
+    }
+
+    public String[] getColumns() {
+        return columns;
+    }
+
+    public String[] getPkColumns() {
+        return pkColumns;
+    }
+
+    public String getTargetTable() {
+        return targetTable;
+    }
+
     // 三张表各定义一个静态实例
     public static final CdcTableDef PRODORDHDR = new CdcTableDef(
             "dbo_t_prodordhdr",
@@ -25,14 +41,16 @@ public class CdcTableDef {
                     "F_BPINV", "F_TRANSPORTEDTIME", "F_BOARDAREA", "F_LAYERTYPE", "F_ScoreType", "F_BIANLIAOPRODID", "F_BIANLIAOCOUNT",
                     "F_TechFlowID", "F_RMRK_CONVERTPROD", "F_PRODIDBYINVSET", "F_FeiLiao", "F_ReWork", "F_ReWorkProdID", "F_ExceedProdID",
                     "F_DIENUM", "F_CreatedBY", "F_TECHFLOWMAINID", "F_ScoreIsControledByMinVal", "F_WIPLen", "F_WIPWidth", "F_FLOWID",
-                    "F_IsBPCorrugatorAccepted", "F_BPCorrugatorAcceptBy", "F_BPCorrugatorUploaded"},
+                    "F_IsBPCorrugatorAccepted", "F_BPCorrugatorAcceptBy", "F_BPCorrugatorUploaded"
+            },
             new String[]{"F_ID"},
             "t_prodordhdr_copy1"
     );
 
     public static final CdcTableDef SALESORDHDR = new CdcTableDef(
             "dbo_t_salesordhdr",
-            new String[]{"F_ID", "F_CUSTORDID", "F_DOCDATE", "F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
+            new String[]{
+                    "F_ID", "F_CUSTORDID", "F_DOCDATE", "F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
                     "F_ISCLOSE", "F_ITEMID", "F_DOCQTY", "F_TRDTYPE", "F_PRNVER", "F_TAXRATE", "F_CURRTYPE", "F_DRAWER", "F_LEVELID", "F_CUSTLEVELID"
             },
             new String[]{"F_ID"},
