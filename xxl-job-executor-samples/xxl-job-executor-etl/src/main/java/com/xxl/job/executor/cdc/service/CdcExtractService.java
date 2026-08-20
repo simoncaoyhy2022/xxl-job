@@ -47,7 +47,9 @@ public class CdcExtractService {
             }
 
             String cols = String.join(",", def.getColumns());
-            String sql = "SELECT [__$operation], " + cols +
+            String sql = "SELECT [__$operation], dbo.getbpname() as BP," +
+                    cols +
+                    ",'xxl-job-cdc' as F_dataSource,getdate() as f_updateTime" +
                     " FROM cdc.fn_cdc_get_net_changes_" + def.getCaptureInstance() +
                     "(?, ?, 'all with mask')";
 

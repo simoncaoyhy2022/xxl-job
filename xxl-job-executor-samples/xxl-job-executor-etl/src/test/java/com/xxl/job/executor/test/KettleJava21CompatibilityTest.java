@@ -4,17 +4,11 @@ import com.xxl.job.executor.EtlExecutorApplication;
 import com.xxl.job.executor.service.HopExecutorService;
 import com.xxl.job.executor.service.KettleExecutorService;
 import org.apache.hop.core.HopEnvironment;
-import org.apache.hop.core.database.DatabasePluginType;
-import org.apache.hop.core.plugins.IPlugin;
-import org.apache.hop.core.plugins.PluginRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.pentaho.di.core.KettleEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 @SpringBootTest(classes = EtlExecutorApplication.class)
 public class KettleJava21CompatibilityTest {
