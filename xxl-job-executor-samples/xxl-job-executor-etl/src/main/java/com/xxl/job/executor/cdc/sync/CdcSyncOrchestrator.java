@@ -64,6 +64,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.PRODORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
+                // todo:排序
                 prodOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -76,6 +77,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
+                // todo：待添加条件
                 salesOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -88,32 +90,7 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public void upsert(List<Map<String, Object>> rows) {
-                salesOrdDtlMapper.upsertBatch(rows);
-            }
-
-            @Override
-            public void delete(List<Map<String, Object>> rows) {
-                salesOrdDtlMapper.deleteBatch(rows);
-            }
-        });
-
-        // pmc.dbo_t_salesordhdr
-        handlerMap.put("pmc." + CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
-            @Override
-            public void upsert(List<Map<String, Object>> rows) {
-                salesOrdHdrMapper.upsertBatch(rows);
-            }
-
-            @Override
-            public void delete(List<Map<String, Object>> rows) {
-                salesOrdHdrMapper.deleteBatch(rows);
-            }
-        });
-
-        // pmc.dbo_t_salesorddtl
-        handlerMap.put("pmc." + CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
-            @Override
-            public void upsert(List<Map<String, Object>> rows) {
+                // todo：待添加条件
                 salesOrdDtlMapper.upsertBatch(rows);
             }
 
