@@ -11,7 +11,6 @@ import com.xxl.job.executor.cdc.service.CdcExtractService;
 import com.xxl.job.executor.cdc.service.CdcWatermarkService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import org.apache.poi.ss.formula.functions.T;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -60,12 +59,12 @@ public class CdcSyncOrchestrator {
     public void init() {
         handlerMap.put(CdcTableDef.PRODORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(String bp, List<Map<String, Object>> rows) {
+            public int upsert(String bp, List<Map<String, Object>> rows) {
                 rows = rows.stream()
-                        .sorted(Comparator.comparing(r -> ((String) r.get("F_ID"))))
+                        .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
                         .toList();
 
-                prodOrdHdrMapper.upsertBatch(rows);
+                return prodOrdHdrMapper.upsertBatch(rows);
             }
 
             @Override
@@ -76,19 +75,20 @@ public class CdcSyncOrchestrator {
 
         handlerMap.put(CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(String bp, List<Map<String, Object>> rows) {
-                String sbp = bp.substring(0, 2);
+            public int upsert(String bp, List<Map<String, Object>> rows) {
+                String sbp = bp.substring(0, 2).toUpperCase();
                 String levelId = sbp + "*";
                 rows = rows.stream()
-                        .filter(row -> !row.get("F_CUSTLEVELID").toString().equals("TPS") && row.get("F_LEVELID").toString().equals(levelId))
-                        .sorted(Comparator.comparing(r -> ((String) r.get("F_ID"))))
+                        .filter(row -> !"TPS".equals(row.get("F_CUSTLEVELID"))
+                                && Objects.equals(levelId, row.get("F_LEVELID")))
+                        .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
                         .toList();
 
                 if (rows.isEmpty()) {
-                    return;
+                    return 0;
                 }
 
-                salesOrdHdrMapper.upsertBatch(rows);
+                return salesOrdHdrMapper.upsertBatch(rows);
             }
 
             @Override
@@ -99,26 +99,25 @@ public class CdcSyncOrchestrator {
 
         handlerMap.put(CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(String bp, List<Map<String, Object>> rows) {
-                String sbp = bp.substring(0, 2);
-                String levelId = sbp + "*";
+            public int upsert(String bp, List<Map<String, Object>> rows) {
+                String sbp = bp.substring(0, 2).toUpperCase();
 
                 rows = rows.stream()
                         .filter(row -> {
-                            boolean isLocalBp = sbp.equals(row.get("F_BPINV").toString());
-                            boolean notTPS = !row.get("F_SALESID").toString().startsWith("TPS");
-                            // 去掉key为F_ITEMID的value的空格
-                            row.put("F_ITEMID", ((String) row.get("F_ITEMID")).trim());
+                            boolean isLocalBp = Objects.equals(sbp, row.get("F_BPINV"));
+                            boolean notTPS = !String.valueOf(row.get("F_SALESID")).startsWith("TPS");
                             return isLocalBp && notTPS;
                         })
-                        .sorted(Comparator.comparing(r -> ((String) r.get("F_SALESID"))))
+                        .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase())) // 去除F_ITEMID的空格
+                        .sorted(Comparator.comparing((Map<String, Object> r) -> String.valueOf(r.get("F_SALESID")))
+                                .thenComparing(r -> String.valueOf(r.get("F_ITEMID"))))
                         .toList();
 
                 if (rows.isEmpty()) {
-                    return;
+                    return 0;
                 }
 
-                salesOrdDtlMapper.upsertBatch(rows);
+                return salesOrdDtlMapper.upsertBatch(rows);
             }
 
             @Override
@@ -201,6 +200,8 @@ public class CdcSyncOrchestrator {
             int upsertCount = 0;
             int deleteCount = 0;
 
+            int realUpsertCount = 0;
+
             if (!changes.isEmpty()) {
                 List<Map<String, Object>> upserts = new ArrayList<>();
                 List<Map<String, Object>> deletes = new ArrayList<>();
@@ -220,7 +221,7 @@ public class CdcSyncOrchestrator {
                 int size = batchSizeFor(def);// 计算每批次大小，避免 SQL 参数过多
 
                 for (List<Map<String, Object>> batch : partition(upserts, size)) {
-                    handler.upsert(bp, batch);
+                    realUpsertCount = handler.upsert(bp, batch);
                 }
                 for (List<Map<String, Object>> batch : partition(deletes, size)) {
                     handler.delete(batch);
@@ -233,8 +234,8 @@ public class CdcSyncOrchestrator {
             // 推进水位（即便本轮无变更，也要推进，避免下次重复扫描空区间）
             watermarkService.upsertLsn(ds, def.getCaptureInstance(), toLsn);
 
-            log("source[{}] captureInstance={} 同步完成, upsert={}, delete={}",
-                    bp, def.getCaptureInstance(), upsertCount, deleteCount);
+            log("BP[{}] captureInstance={} 同步完成, upsert={}/{}, delete={}",
+                    bp, def.getCaptureInstance(), realUpsertCount, upsertCount, deleteCount);
         } catch (Exception e) {
             log("source[{}] captureInstance={} 同步失败: {}", bp, def.getCaptureInstance(), e.getMessage());
             logger.error("CDC sync error, source={}, captureInstance={}", bp, def.getCaptureInstance(), e);

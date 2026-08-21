@@ -1,4 +1,3 @@
-// xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/sync/CdcTableSyncHandler.java
 package com.xxl.job.executor.cdc.sync;
 
 import java.util.List;
@@ -9,7 +8,7 @@ import java.util.Map;
  */
 public interface CdcTableSyncHandler {
 
-    void upsert(String bp, List<Map<String, Object>> rows);
+    int upsert(String bp, List<Map<String, Object>> rows);
 
     void delete(List<Map<String, Object>> rows);
 
