@@ -64,7 +64,10 @@ public class CdcSyncOrchestrator {
                         .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
                         .toList();
 
-                return prodOrdHdrMapper.upsertBatch(rows);
+                prodOrdHdrMapper.upsertBatch(rows);
+                // upsert的返回值是受影响的行数，mysql的INSERT ... VALUES (...),(...),... ON DUPLICATE KEY UPDATE返回的行数不是我们需要的
+                // 因此这里直接返回 rows.size() 作为本次处理的行数
+                return rows.size();
             }
 
             @Override
@@ -88,7 +91,8 @@ public class CdcSyncOrchestrator {
                     return 0;
                 }
 
-                return salesOrdHdrMapper.upsertBatch(rows);
+                salesOrdHdrMapper.upsertBatch(rows);
+                return rows.size();
             }
 
             @Override
@@ -117,7 +121,8 @@ public class CdcSyncOrchestrator {
                     return 0;
                 }
 
-                return salesOrdDtlMapper.upsertBatch(rows);
+                salesOrdDtlMapper.upsertBatch(rows);
+                return rows.size();
             }
 
             @Override
@@ -200,8 +205,6 @@ public class CdcSyncOrchestrator {
             int upsertCount = 0;
             int deleteCount = 0;
 
-            int realUpsertCount = 0;
-
             if (!changes.isEmpty()) {
                 List<Map<String, Object>> upserts = new ArrayList<>();
                 List<Map<String, Object>> deletes = new ArrayList<>();
@@ -221,21 +224,20 @@ public class CdcSyncOrchestrator {
                 int size = batchSizeFor(def);// 计算每批次大小，避免 SQL 参数过多
 
                 for (List<Map<String, Object>> batch : partition(upserts, size)) {
-                    realUpsertCount = handler.upsert(bp, batch);
+                    upsertCount += handler.upsert(bp, batch);
                 }
                 for (List<Map<String, Object>> batch : partition(deletes, size)) {
                     handler.delete(batch);
                 }
 
-                upsertCount = upserts.size();
                 deleteCount = deletes.size();
             }
 
             // 推进水位（即便本轮无变更，也要推进，避免下次重复扫描空区间）
             watermarkService.upsertLsn(ds, def.getCaptureInstance(), toLsn);
 
-            log("BP[{}] captureInstance={} 同步完成, upsert={}/{}, delete={}",
-                    bp, def.getCaptureInstance(), realUpsertCount, upsertCount, deleteCount);
+            log("BP[{}] captureInstance={} 同步完成, upsert={}, delete={}",
+                    bp, def.getCaptureInstance(), upsertCount, deleteCount);
         } catch (Exception e) {
             log("source[{}] captureInstance={} 同步失败: {}", bp, def.getCaptureInstance(), e.getMessage());
             logger.error("CDC sync error, source={}, captureInstance={}", bp, def.getCaptureInstance(), e);

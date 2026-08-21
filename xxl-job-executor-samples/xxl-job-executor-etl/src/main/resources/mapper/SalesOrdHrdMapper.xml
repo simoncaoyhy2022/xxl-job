@@ -5,7 +5,7 @@
 
     <!-- 批量 Upsert：以目标表主键 F_SALESID 自动判断冲突 -->
     <insert id="upsertBatch" parameterType="java.util.List">
-        INSERT INTO fact_sales_order_hdr_copy1 (
+        INSERT INTO fact_sales_order_hdr (
         BP,
         F_SALESID,
         F_CUSTORDID,
@@ -85,7 +85,7 @@
 
     <!-- 批量删除：直接依据单主键 F_SALESID 删除 -->
     <delete id="deleteBatch" parameterType="java.util.List">
-        DELETE FROM fact_sales_order_hdr_copy1
+        DELETE FROM fact_sales_order_hdr
         WHERE F_SALESID IN
         <foreach collection="list" item="item" open="(" separator="," close=")">
             #{item.F_ID}

@@ -4,7 +4,7 @@
 <mapper namespace="com.xxl.job.executor.cdc.mapper.ProdOrdHdrMapper">
 
     <insert id="upsertBatch" parameterType="java.util.List">
-        INSERT INTO t_prodordhdr_copy1 (
+        INSERT INTO t_prodordhdr (
         BP,
         F_ID,
         F_DOCDATE,
@@ -202,7 +202,7 @@
     </insert>
 
     <delete id="deleteBatch" parameterType="java.util.List">
-        DELETE FROM t_prodordhdr_copy1
+        DELETE FROM t_prodordhdr
         WHERE (BP, F_ID) IN
         <foreach collection="list" item="item" open="(" separator="," close=")">
             (#{item.BP}, #{item.F_ID})

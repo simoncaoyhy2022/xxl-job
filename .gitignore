@@ -33,12 +33,8 @@ logs/
 # 本地数据文件夹（仅忽略根目录下的 data 文件夹）
 /data/
 
-# ==========================================
-# 忽略包含真实密码的本地配置文件
-# ==========================================
 **/src/main/resources/application.properties
 
-# 但不要忽略我们刚创建的模板文件
 !**/src/main/resources/application.properties.template
 
-/xxl-job-executor-samples/xxl-job-executor-etl/src/test/java/com/xxl/job/executor/test/MapperTest.java
+/xxl-job-executor-samples/xxl-job-executor-etl/src/test/
