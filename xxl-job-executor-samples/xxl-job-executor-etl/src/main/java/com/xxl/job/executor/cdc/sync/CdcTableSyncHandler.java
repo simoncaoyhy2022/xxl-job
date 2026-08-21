@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public interface CdcTableSyncHandler {
 
-    void upsert(List<Map<String, Object>> rows);
+    void upsert(String bp, List<Map<String, Object>> rows);
 
     void delete(List<Map<String, Object>> rows);
 

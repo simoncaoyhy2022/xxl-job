@@ -3,10 +3,10 @@ package com.xxl.job.executor.cdc.meta;
 import java.util.List;
 
 public class CdcTableDef {
-    private final String captureInstance;   // 如 dbo_t_prodordhdr
+    private final String captureInstance;    // 如 dbo_t_prodordhdr
     private final String[] columns;          // 源表列名（不含 __$ 系统列）
-    private final String[] pkColumns;       // 主键列，支持联合主键
-    private final String targetTable;        // 目标表名
+    private final String[] pkColumns;        // 主键列，支持联合主键【未使用】
+    private final String targetTable;        // 目标表名【未使用】
 
     public CdcTableDef(String captureInstance, String[] columns, String[] pkColumns, String targetTable) {
         this.captureInstance = captureInstance;

@@ -11,16 +11,13 @@ import com.xxl.job.executor.cdc.service.CdcExtractService;
 import com.xxl.job.executor.cdc.service.CdcWatermarkService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
+import org.apache.poi.ss.formula.functions.T;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -63,8 +60,11 @@ public class CdcSyncOrchestrator {
     public void init() {
         handlerMap.put(CdcTableDef.PRODORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(List<Map<String, Object>> rows) {
-                // todo:添排序
+            public void upsert(String bp, List<Map<String, Object>> rows) {
+                rows = rows.stream()
+                        .sorted(Comparator.comparing(r -> ((String) r.get("F_ID"))))
+                        .toList();
+
                 prodOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -76,8 +76,18 @@ public class CdcSyncOrchestrator {
 
         handlerMap.put(CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(List<Map<String, Object>> rows) {
-                // todo：待添加过滤条件
+            public void upsert(String bp, List<Map<String, Object>> rows) {
+                String sbp = bp.substring(0, 2);
+                String levelId = sbp + "*";
+                rows = rows.stream()
+                        .filter(row -> !row.get("F_CUSTLEVELID").toString().equals("TPS") && row.get("F_LEVELID").toString().equals(levelId))
+                        .sorted(Comparator.comparing(r -> ((String) r.get("F_ID"))))
+                        .toList();
+
+                if (rows.isEmpty()) {
+                    return;
+                }
+
                 salesOrdHdrMapper.upsertBatch(rows);
             }
 
@@ -89,8 +99,25 @@ public class CdcSyncOrchestrator {
 
         handlerMap.put(CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
-            public void upsert(List<Map<String, Object>> rows) {
-                // todo：待添加过滤条件
+            public void upsert(String bp, List<Map<String, Object>> rows) {
+                String sbp = bp.substring(0, 2);
+                String levelId = sbp + "*";
+
+                rows = rows.stream()
+                        .filter(row -> {
+                            boolean isLocalBp = sbp.equals(row.get("F_BPINV").toString());
+                            boolean notTPS = !row.get("F_SALESID").toString().startsWith("TPS");
+                            // 去掉key为F_ITEMID的value的空格
+                            row.put("F_ITEMID", ((String) row.get("F_ITEMID")).trim());
+                            return isLocalBp && notTPS;
+                        })
+                        .sorted(Comparator.comparing(r -> ((String) r.get("F_SALESID"))))
+                        .toList();
+
+                if (rows.isEmpty()) {
+                    return;
+                }
+
                 salesOrdDtlMapper.upsertBatch(rows);
             }
 
@@ -144,27 +171,6 @@ public class CdcSyncOrchestrator {
         }
     }
 
-    /**
-     * 同步指定源库的全部表
-     */
-    public void syncSource(String bp) {
-        for (CdcTableDef def : CdcTableDef.ALL) {
-            // def.get
-            syncOne(bp, def);
-        }
-    }
-
-    /**
-     * 同步指定源库的指定表（按 captureInstance 匹配）
-     */
-    public void syncTable(String bp, String captureInstance) {
-        CdcTableDef def = CdcTableDef.ALL.stream()
-                .filter(d -> d.getCaptureInstance().equals(captureInstance))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("未知的 captureInstance: " + captureInstance));
-        syncOne(bp, def);
-    }
-
     private void syncOne(String bp, CdcTableDef def) {
         DataSource ds = registry.get(bp);
         if (ds == null) {
@@ -214,7 +220,7 @@ public class CdcSyncOrchestrator {
                 int size = batchSizeFor(def);// 计算每批次大小，避免 SQL 参数过多
 
                 for (List<Map<String, Object>> batch : partition(upserts, size)) {
-                    handler.upsert(batch);
+                    handler.upsert(bp, batch);
                 }
                 for (List<Map<String, Object>> batch : partition(deletes, size)) {
                     handler.delete(batch);
