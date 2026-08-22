@@ -42,7 +42,8 @@ public class CdcExtractService {
             }
 
             // from > to：说明 toLsn 是在极短时间窗口内取的、日志还没推进，直接返回空，避免触发函数报错
-            if (Arrays.compare(effectiveFrom, toLsn) > 0) {
+            // 将 Arrays.compare 改为 Arrays.compareUnsigned
+            if (Arrays.compareUnsigned(effectiveFrom, toLsn) > 0) {
                 return new ArrayList<>();
             }
 

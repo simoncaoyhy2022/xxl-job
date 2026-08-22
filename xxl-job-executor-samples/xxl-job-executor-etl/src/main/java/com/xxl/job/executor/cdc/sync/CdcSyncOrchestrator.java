@@ -175,6 +175,12 @@ public class CdcSyncOrchestrator {
         }
     }
 
+
+    // 测试用方法
+    public void syncBP(String bp, CdcTableDef def) {
+        syncOne(bp, def);
+    }
+
     private void syncOne(String bp, CdcTableDef def) {
         DataSource ds = registry.get(bp);
         if (ds == null) {
@@ -195,7 +201,7 @@ public class CdcSyncOrchestrator {
                 log("source[{}] captureInstance={} 获取 max_lsn 为空, 跳过", bp, def.getCaptureInstance());
                 return;
             }
-            if (fromLsn != null && Arrays.compare(fromLsn, toLsn) >= 0) {
+            if (fromLsn != null && Arrays.compareUnsigned(fromLsn, toLsn) >= 0) {
                 log("source[{}] captureInstance={} 无新变更(fromLsn>=toLsn), 跳过", bp, def.getCaptureInstance());
                 return;
             }
