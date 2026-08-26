@@ -26,7 +26,6 @@ public class HopExecutorService {
 
     private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
 
-    // Hop 元数据目录配置，数据库配置信息存放在此目录中，这与kettle不同
     @Value("${hop.metadata.base-folders}")
     private String metadataFolder;
 
@@ -39,28 +38,25 @@ public class HopExecutorService {
         XxlJobHelper.log(">>>>>> 开始执行 Hop Pipeline: {}", pipelinePath);
 
         IVariables variables = Variables.getADefaultVariableSpace();
-
         IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
-
         PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
 
-        // ✅ 直接实例化 LocalPipelineEngine，跳过了按 Run Configuration 选择/创建引擎的逻辑（不再需要预先在 metadata 目录配置 run-config），
-        // 但 metadataProvider 仍用于解析数据库连接等其他元数据。
         LocalPipelineEngine pipeline = new LocalPipelineEngine(pipelineMeta);
         pipeline.setMetadataProvider(metadataProvider);
         pipeline.initializeFrom(variables);
         pipeline.setLogLevel(LOG_LEVEL);
 
+        String logChannelId = null;
         try {
+            logChannelId = pipeline.getLogChannelId();
             pipeline.prepareExecution();
             pipeline.startThreads();
             pipeline.waitUntilFinished();
 
             Result result = pipeline.getResult();
-            // 抓取 Hop 内存中的运行日志并输出到 XXL-JOB 日志
+            // 获取日志并输出
             String hopLogText = getHopLog(pipeline);
             XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
-
 
             if (result.getNrErrors() > 0) {
                 throw new RuntimeException("Hop [Pipeline] 执行失败，错误数: " + result.getNrErrors() + "，路径: " + pipelinePath);
@@ -70,6 +66,21 @@ public class HopExecutorService {
         } catch (Exception e) {
             log.error("执行 Hop Pipeline [{}] 抛出异常: {}", pipelinePath, e.getMessage(), e);
             throw e;
+        } finally {
+            // 1. 释放 Pipeline 内部算子和行集资源
+            try {
+                pipeline.cleanup();
+            } catch (Throwable t) {
+                log.warn("释放 Hop Pipeline 资源异常（已忽略）: {}", t.getMessage());
+            }
+            // 2. 独立清除全局日志单例缓存，防止静态 Map 内存泄漏
+            if (logChannelId != null) {
+                try {
+                    HopLogStore.discardLines(logChannelId, true);
+                } catch (Throwable t) {
+                    log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
+                }
+            }
         }
     }
 
@@ -84,20 +95,19 @@ public class HopExecutorService {
         IVariables variables = Variables.getADefaultVariableSpace();
         IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
 
-        // 1. 构造 WorkflowMeta (参数顺序: variables, filename, metadataProvider)
         WorkflowMeta workflowMeta = new WorkflowMeta(variables, workflowPath, metadataProvider);
 
-        // 2. 直接实例化 LocalWorkflowEngine 并注入依赖
         IWorkflowEngine<WorkflowMeta> workflow = new LocalWorkflowEngine(workflowMeta);
         workflow.setMetadataProvider(metadataProvider);
-        workflow.initializeFrom(variables); // 继承/合并变量空间
+        workflow.initializeFrom(variables);
         workflow.setLogLevel(LOG_LEVEL);
 
+        String logChannelId = null;
         try {
-            // 3. startExecution 阻塞执行并直接返回 Result
+            logChannelId = workflow.getLogChannelId();
             Result result = workflow.startExecution();
 
-            // 抓取 Hop 内存中的运行日志并输出到 XXL-JOB 日志
+            // 获取日志并输出
             String hopLogText = getHopLog(workflow);
             XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
 
@@ -109,6 +119,15 @@ public class HopExecutorService {
         } catch (Exception e) {
             log.error("执行 Hop Workflow [{}] 抛出异常: {}", workflowPath, e.getMessage(), e);
             throw e;
+        } finally {
+            // Workflow 核心清理：清除日志通道缓存，防止内存泄漏
+            if (logChannelId != null) {
+                try {
+                    HopLogStore.discardLines(logChannelId, true);
+                } catch (Throwable t) {
+                    log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
+                }
+            }
         }
     }
 
@@ -120,15 +139,11 @@ public class HopExecutorService {
         );
     }
 
-    /**
-     * 获取 Hop 内存缓冲区中的运行日志
-     */
     private String getHopLog(ILoggingObject loggingObject) {
         if (loggingObject == null) {
             return "";
         }
         String logChannelId = loggingObject.getLogChannelId();
-        // 从 HopLogStore 的 Appender 中获取指定 Channel 的日志内容
         return HopLogStore.getAppender().getBuffer(logChannelId, false).toString();
     }
 }
