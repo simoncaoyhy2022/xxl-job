@@ -83,6 +83,8 @@ public class CdcSyncOrchestrator {
                 if ("pmc".equals(bp)) {
                     rows = rows.stream()
                             .filter(row -> "TPS".equals(row.get("F_CUSTLEVELID")))
+                            .peek(row ->
+                                    row.put("BP", String.valueOf(row.get("F_LEVELID")).substring(0, 2).concat("BP")))
                             .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
                             .toList();
                 } else {
