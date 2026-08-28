@@ -11,6 +11,7 @@ import com.xxl.job.executor.cdc.service.CdcExtractService;
 import com.xxl.job.executor.cdc.service.CdcWatermarkService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
+import org.apache.poi.ss.formula.functions.T;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -79,13 +80,20 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDHDR.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public int upsert(String bp, List<Map<String, Object>> rows) {
-                String sbp = bp.substring(0, 2).toUpperCase();
-                String levelId = sbp + "*";
-                rows = rows.stream()
-                        .filter(row -> !"TPS".equals(row.get("F_CUSTLEVELID"))
-                                && Objects.equals(levelId, row.get("F_LEVELID")))
-                        .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
-                        .toList();
+                if ("pmc".equals(bp)) {
+                    rows = rows.stream()
+                            .filter(row -> "TPS".equals(row.get("F_CUSTLEVELID")))
+                            .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
+                            .toList();
+                } else {
+                    String sbp = bp.substring(0, 2).toUpperCase();
+                    String levelId = sbp + "*";
+                    rows = rows.stream()
+                            .filter(row -> !"TPS".equals(row.get("F_CUSTLEVELID"))
+                                    && Objects.equals(levelId, row.get("F_LEVELID")))
+                            .sorted(Comparator.comparing(r -> (String.valueOf(r.get("F_ID")))))
+                            .toList();
+                }
 
                 if (rows.isEmpty()) {
                     return 0;
@@ -104,18 +112,26 @@ public class CdcSyncOrchestrator {
         handlerMap.put(CdcTableDef.SALESORDDTL.getCaptureInstance(), new CdcTableSyncHandler() {
             @Override
             public int upsert(String bp, List<Map<String, Object>> rows) {
-                String sbp = bp.substring(0, 2).toUpperCase();
-
-                rows = rows.stream()
-                        .filter(row -> {
-                            boolean isLocalBp = Objects.equals(sbp, row.get("F_BPINV"));
-                            boolean notTPS = !String.valueOf(row.get("F_SALESID")).startsWith("TPS");
-                            return isLocalBp && notTPS;
-                        })
-                        .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase())) // 去除F_ITEMID的空格
-                        .sorted(Comparator.comparing((Map<String, Object> r) -> String.valueOf(r.get("F_SALESID")))
-                                .thenComparing(r -> String.valueOf(r.get("F_ITEMID"))))
-                        .toList();
+                if ("pmc".equals(bp)) {
+                    rows = rows.stream()
+                            .filter(row -> String.valueOf(row.get("F_SALESID")).startsWith("TPS"))
+                            .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase())) // 去除F_ITEMID的空格
+                            .sorted(Comparator.comparing((Map<String, Object> r) -> String.valueOf(r.get("F_SALESID")))
+                                    .thenComparing(r -> String.valueOf(r.get("F_ITEMID"))))
+                            .toList();
+                } else {
+                    String sbp = bp.substring(0, 2).toUpperCase();
+                    rows = rows.stream()
+                            .filter(row -> {
+                                boolean isLocalBp = Objects.equals(sbp, row.get("F_BPINV"));
+                                boolean notTPS = !String.valueOf(row.get("F_SALESID")).startsWith("TPS");
+                                return isLocalBp && notTPS;
+                            })
+                            .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase())) // 去除F_ITEMID的空格
+                            .sorted(Comparator.comparing((Map<String, Object> r) -> String.valueOf(r.get("F_SALESID")))
+                                    .thenComparing(r -> String.valueOf(r.get("F_ITEMID"))))
+                            .toList();
+                }
 
                 if (rows.isEmpty()) {
                     return 0;
@@ -138,7 +154,7 @@ public class CdcSyncOrchestrator {
      */
     public void syncAllProd() {
         List<String> bps = cdcSourceProperties.getSources().stream()
-                .filter(CdcSourceProperties.SourceConfig::isProd)
+                .filter(c -> c.isProd() || "pmc".equals(c.getId())) // 生产厂或PMC
                 .map(CdcSourceProperties.SourceConfig::getId)
                 .toList();
 
@@ -147,6 +163,9 @@ public class CdcSyncOrchestrator {
             List<? extends Future<?>> futures = bps.stream()
                     .map(bp -> executor.submit(() -> {
                         for (CdcTableDef def : CdcTableDef.ALL) {
+                            if ("pmc".equals(bp) && "dbo_t_prodordhdr".equals(def.getCaptureInstance())) {
+                                continue;
+                            }
                             syncOne(bp, def);
                         }
                     }))

@@ -39,6 +39,9 @@ public class CdcExtractService {
                     // 该 capture instance 尚无任何可用变更（刚开启 CDC 或日志已被清理），本次无数据
                     return new ArrayList<>();
                 }
+            } else {
+                // 非首次同步，跳过上次已处理的边界，避免闭区间重复
+                effectiveFrom = incrementLsn(ds, effectiveFrom);
             }
 
             // from > to：说明 toLsn 是在极短时间窗口内取的、日志还没推进，直接返回空，避免触发函数报错
@@ -74,6 +77,20 @@ public class CdcExtractService {
 
         } catch (SQLException e) {
             throw new RuntimeException("抽取净变更失败, captureInstance=" + def.getCaptureInstance(), e);
+        }
+    }
+
+    // CdcExtractService 新增
+    public byte[] incrementLsn(DataSource ds, byte[] lsn) {
+        String sql = "SELECT sys.fn_cdc_increment_lsn(?)";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setBytes(1, lsn);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBytes(1) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("increment lsn 失败", e);
         }
     }
 
