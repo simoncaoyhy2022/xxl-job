@@ -165,7 +165,7 @@ public class CdcSyncOrchestrator {
             List<? extends Future<?>> futures = bps.stream()
                     .map(bp -> executor.submit(() -> {
                         for (CdcTableDef def : CdcTableDef.ALL) {
-                            if ("pmc".equals(bp) && "dbo_t_prodordhdr".equals(def.getCaptureInstance())) {
+                            if ("pmc".equals(bp) && def == CdcTableDef.PRODORDHDR) {
                                 continue;
                             }
                             syncOne(bp, def);

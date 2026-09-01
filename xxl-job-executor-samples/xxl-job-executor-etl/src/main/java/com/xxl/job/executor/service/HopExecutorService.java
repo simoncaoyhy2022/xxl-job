@@ -6,6 +6,7 @@ import org.apache.hop.core.encryption.HopTwoWayPasswordEncoder;
 import org.apache.hop.core.logging.HopLogStore;
 import org.apache.hop.core.logging.ILoggingObject;
 import org.apache.hop.core.logging.LogLevel;
+import org.apache.hop.core.logging.LoggingRegistry;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.variables.Variables;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
@@ -33,21 +34,23 @@ public class HopExecutorService {
      * 执行 Hop Pipeline (.hpl)
      */
     public void runPipeline(String pipelinePath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
 
         XxlJobHelper.log(">>>>>> 开始执行 Hop Pipeline: {}", pipelinePath);
 
-        IVariables variables = Variables.getADefaultVariableSpace();
-        IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
-        PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
-
-        LocalPipelineEngine pipeline = new LocalPipelineEngine(pipelineMeta);
-        pipeline.setMetadataProvider(metadataProvider);
-        pipeline.initializeFrom(variables);
-        pipeline.setLogLevel(LOG_LEVEL);
-
+        LocalPipelineEngine pipeline = null;
         String logChannelId = null;
         try {
+            IVariables variables = Variables.getADefaultVariableSpace();
+            IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
+            PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
+
+            pipeline = new LocalPipelineEngine(pipelineMeta);
+            pipeline.setMetadataProvider(metadataProvider);
+            pipeline.initializeFrom(variables);
+            pipeline.setLogLevel(LOG_LEVEL);
+
             logChannelId = pipeline.getLogChannelId();
             pipeline.prepareExecution();
             pipeline.startThreads();
@@ -68,19 +71,24 @@ public class HopExecutorService {
             throw e;
         } finally {
             // 1. 释放 Pipeline 内部算子和行集资源
-            try {
-                pipeline.cleanup();
-            } catch (Throwable t) {
-                log.warn("释放 Hop Pipeline 资源异常（已忽略）: {}", t.getMessage());
+            if (pipeline != null) {
+                try {
+                    pipeline.cleanup();
+                } catch (Throwable t) {
+                    log.warn("释放 Hop Pipeline 资源异常（已忽略）: {}", t.getMessage());
+                }
             }
-            // 2. 独立清除全局日志单例缓存，防止静态 Map 内存泄漏
+            // 2. 清理日志内容缓存 + 注销全局 LoggingRegistry 引用（防止内存与ClassLoader泄漏）
             if (logChannelId != null) {
                 try {
                     HopLogStore.discardLines(logChannelId, true);
+                    LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                 } catch (Throwable t) {
                     log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
                 }
             }
+            // 3. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
     }
 
@@ -88,22 +96,24 @@ public class HopExecutorService {
      * 执行 Hop Workflow (.hwf)
      */
     public void runWorkflow(String workflowPath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
 
         XxlJobHelper.log(">>>>>> 开始执行 Hop Workflow: {}", workflowPath);
 
-        IVariables variables = Variables.getADefaultVariableSpace();
-        IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
-
-        WorkflowMeta workflowMeta = new WorkflowMeta(variables, workflowPath, metadataProvider);
-
-        IWorkflowEngine<WorkflowMeta> workflow = new LocalWorkflowEngine(workflowMeta);
-        workflow.setMetadataProvider(metadataProvider);
-        workflow.initializeFrom(variables);
-        workflow.setLogLevel(LOG_LEVEL);
-
+        IWorkflowEngine<WorkflowMeta> workflow = null;
         String logChannelId = null;
         try {
+            IVariables variables = Variables.getADefaultVariableSpace();
+            IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
+
+            WorkflowMeta workflowMeta = new WorkflowMeta(variables, workflowPath, metadataProvider);
+
+            workflow = new LocalWorkflowEngine(workflowMeta);
+            workflow.setMetadataProvider(metadataProvider);
+            workflow.initializeFrom(variables);
+            workflow.setLogLevel(LOG_LEVEL);
+
             logChannelId = workflow.getLogChannelId();
             Result result = workflow.startExecution();
 
@@ -120,14 +130,17 @@ public class HopExecutorService {
             log.error("执行 Hop Workflow [{}] 抛出异常: {}", workflowPath, e.getMessage(), e);
             throw e;
         } finally {
-            // Workflow 核心清理：清除日志通道缓存，防止内存泄漏
+            // 1. Workflow 核心清理：清除日志通道缓存 + 注销全局 LoggingRegistry 引用
             if (logChannelId != null) {
                 try {
                     HopLogStore.discardLines(logChannelId, true);
+                    LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                 } catch (Throwable t) {
                     log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
                 }
             }
+            // 2. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
     }
 
