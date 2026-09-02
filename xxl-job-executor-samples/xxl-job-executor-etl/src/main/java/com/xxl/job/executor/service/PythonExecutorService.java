@@ -29,7 +29,7 @@ public class PythonExecutorService {
     @Value("${python.interpreter-path}")
     private String interpreterPath;
 
-    @Value("${python.script-timeout-seconds:1800}")
+    @Value("${python.script-timeout-seconds}")
     private long timeoutSeconds;
 
     /**
