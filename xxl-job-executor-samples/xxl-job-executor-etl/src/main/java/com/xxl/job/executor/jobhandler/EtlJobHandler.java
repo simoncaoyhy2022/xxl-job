@@ -5,7 +5,7 @@ import com.xxl.job.core.handler.annotation.XxlJob;
 import com.xxl.job.executor.service.HopExecutorService;
 import com.xxl.job.executor.service.KettleExecutorService;
 import com.xxl.job.executor.service.ScriptArtifactService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
@@ -16,11 +16,11 @@ import java.nio.file.Path;
 @Component
 public class EtlJobHandler {
 
-    @Autowired
+    @Resource
     private KettleExecutorService kettleExecutorService;
-    @Autowired
+    @Resource
     private HopExecutorService hopExecutorService;
-    @Autowired
+    @Resource
     private ScriptArtifactService scriptArtifactService;
 
     /**

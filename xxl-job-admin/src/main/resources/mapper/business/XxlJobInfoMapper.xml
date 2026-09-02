@@ -101,9 +101,9 @@
 			<if test="jobGroup gt 0">
 				AND t.job_group = #{jobGroup}
 			</if>
-            <if test="triggerStatus gte 0">
-                AND t.trigger_status = #{triggerStatus}
-            </if>
+			<if test="triggerStatus gte 0">
+				AND t.trigger_status = #{triggerStatus}
+			</if>
 			<if test="name != null and name != ''">
 				AND t.name like CONCAT(CONCAT('%', #{name}), '%')
 			</if>
@@ -112,6 +112,9 @@
 			</if>
 			<if test="author != null and author != ''">
 				AND t.author like CONCAT(CONCAT('%', #{author}), '%')
+			</if>
+			<if test="categoryId gt 0">
+				AND t.category_id = #{categoryId}
 			</if>
 		</trim>
 	</select>
