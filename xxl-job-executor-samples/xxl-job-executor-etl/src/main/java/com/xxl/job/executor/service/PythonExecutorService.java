@@ -89,8 +89,15 @@ public class PythonExecutorService {
             readerThread.start();
 
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+
             if (!finished) {
                 process.destroyForcibly();
+                // 确保子进程真正退出
+                process.waitFor(5, TimeUnit.SECONDS);
+
+                // 尽量让日志读取线程收尾
+                readerThread.join(5000);
+
                 throw new RuntimeException("Python 脚本执行超时(" + timeoutSeconds + "s)，路径: " + scriptPath);
             }
 
@@ -108,7 +115,14 @@ public class PythonExecutorService {
         } finally {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
+
+                try {
+                    process.waitFor(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
+
             if (readerThread != null && readerThread.isAlive()) {
                 readerThread.interrupt();
             }
