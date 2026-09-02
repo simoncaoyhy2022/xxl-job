@@ -41,6 +41,11 @@ xxl.job.executor.script-cache-path=${java.io.tmpdir}/xxl-job-script-cache
 hop.plugin.base-folders=/usr/xxl-job/hop-plugins
 hop.metadata.base-folders=/usr/xxl-job/data/script-repository/hop/metadata
 
+### Python (独立部署，不在 /usr/xxl-job 备份范围内)
+### 本地 Windows 开发时，通过环境变量 PYTHON_INTERPRETER_PATH 覆盖此默认值
+python.interpreter-path=${PYTHON_INTERPRETER_PATH:/data/xxl-job-python/venvs/default/bin/python3}
+python.script-timeout-seconds=${PYTHON_SCRIPT_TIMEOUT_SECONDS:43200}
+
 
 ### ---------------- target 报表库（唯一 Spring 数据源，MyBatis 直连） ----------------
 spring.datasource.type=com.alibaba.druid.pool.DruidDataSource

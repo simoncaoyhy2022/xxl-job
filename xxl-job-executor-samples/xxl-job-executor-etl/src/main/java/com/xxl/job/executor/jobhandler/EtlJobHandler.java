@@ -1,9 +1,11 @@
 package com.xxl.job.executor.jobhandler;
 
+import com.xxl.job.core.context.XxlJobContext;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import com.xxl.job.executor.service.HopExecutorService;
 import com.xxl.job.executor.service.KettleExecutorService;
+import com.xxl.job.executor.service.PythonExecutorService;
 import com.xxl.job.executor.service.ScriptArtifactService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
@@ -22,6 +24,8 @@ public class EtlJobHandler {
     private HopExecutorService hopExecutorService;
     @Resource
     private ScriptArtifactService scriptArtifactService;
+    @Resource
+    private PythonExecutorService pythonExecutorService;
 
     /**
      * 1. 执行 Kettle Job (.kjb)
@@ -104,6 +108,32 @@ public class EtlJobHandler {
             XxlJobHelper.handleSuccess("Hop Workflow 执行完毕！");
         } catch (Exception e) {
             XxlJobHelper.handleFail("Hop Workflow 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 5. 执行 Python 脚本
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: pythonJobHandler
+     * 任务参数填入: scriptId=123（推荐），或 .py 文件的绝对路径（兼容旧任务）
+     */
+    @XxlJob("pythonJobHandler")
+    public void executePython() {
+        String pyPath = XxlJobHelper.getJobParam();
+        if (pyPath == null || pyPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Python 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            String resolved = resolveScript(pyPath, "PY");
+            pythonExecutorService.runScript(
+                    resolved,
+                    String.valueOf(XxlJobContext.getXxlJobContext().getShardIndex()),
+                    String.valueOf(XxlJobContext.getXxlJobContext().getShardTotal())
+            );
+            XxlJobHelper.handleSuccess("Python 脚本执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Python 脚本执行异常: " + e.getMessage());
         }
     }
 
