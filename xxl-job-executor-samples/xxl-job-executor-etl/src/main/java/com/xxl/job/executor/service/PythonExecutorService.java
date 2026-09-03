@@ -91,9 +91,7 @@ public class PythonExecutorService {
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
 
             if (!finished) {
-                process.destroyForcibly();
-                // 确保子进程真正退出
-                process.waitFor(5, TimeUnit.SECONDS);
+                destroyProcessTree(process);
                 // 尽量让日志读取线程收尾
                 readerThread.join(5000);
                 throw new RuntimeException("Python 脚本执行超时(" + timeoutSeconds + "s)，路径: " + scriptPath);
@@ -111,18 +109,30 @@ public class PythonExecutorService {
             log.error("执行 Python 脚本 [{}] 抛出异常: {}", scriptPath, e.getMessage(), e);
             throw e;
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly();
-
-                try {
-                    process.waitFor(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-
+            destroyProcessTree(process); // 替换原 process.destroyForcibly() 块
             if (readerThread != null && readerThread.isAlive()) {
                 readerThread.interrupt();
+            }
+        }
+    }
+
+    // ================== 新增：递归销毁整棵进程树（JDK 9+） ==================
+    private void destroyProcessTree(Process process) {
+        if (process == null || !process.isAlive()) {
+            return;
+        }
+        try {
+            // 1. 优先递归强杀所有派生的子进程（如 multiprocessing、subprocess 生成的子进程）
+            process.descendants().forEach(ProcessHandle::destroyForcibly);
+        } catch (Exception e) {
+            log.warn("清理 Python 衍生子进程树异常: {}", e.getMessage());
+        } finally {
+            // 2. 强杀主进程并等待回收
+            process.destroyForcibly();
+            try {
+                process.waitFor(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }
