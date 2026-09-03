@@ -35,7 +35,7 @@ xxl.job.executor.glueenabled=true
 
 ### Script repository client. Must match xxl-job-admin xxl.job.file.api-token.
 xxl.job.file.api-token=YOUR_API_TOKEN
-xxl.job.executor.script-cache-path=${java.io.tmpdir}/xxl-job-script-cache
+xxl.job.executor.script-cache-path=/usr/xxl-job/logs/script-cache
 
 ### Hop
 hop.plugin.base-folders=/usr/xxl-job/hop-plugins
