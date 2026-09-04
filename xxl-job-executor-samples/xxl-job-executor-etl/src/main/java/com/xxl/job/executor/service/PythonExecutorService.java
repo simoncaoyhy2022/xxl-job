@@ -116,7 +116,7 @@ public class PythonExecutorService {
         }
     }
 
-    // ================== 新增：递归销毁整棵进程树（JDK 9+） ==================
+    // ================== 递归销毁整棵进程树（JDK 9+） ==================
     private void destroyProcessTree(Process process) {
         if (process == null || !process.isAlive()) {
             return;

@@ -1,7 +1,6 @@
 package com.xxl.job.executor.service;
 
 import com.xxl.job.core.context.XxlJobHelper;
-import jakarta.annotation.Resource;
 import org.pentaho.di.core.logging.KettleLogStore;
 import org.pentaho.di.core.logging.LogLevel;
 import org.pentaho.di.core.logging.LoggingObjectInterface;
@@ -12,7 +11,6 @@ import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,8 +22,8 @@ public class KettleExecutorService {
 
     private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
 
-    @Resource
-    private EtlAlarmService etlAlarmService;
+    // @Resource
+    // private EtlAlarmService etlAlarmService;
 
     /**
      * 执行 Kettle Job (.kjb)
