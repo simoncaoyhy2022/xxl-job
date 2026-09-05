@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * CDC 增量同步 XxlJob 入口
- * 类名中的Prod表示生产类型的源库，区别于PMC等虚拟BP系统的的源库
+ * 这里的Prod表示生产型的源库，区别于PMC等虚拟BP系统的的源库
  * <p>
  * 在 XXL-JOB 调度中心配置 JobHandler 名称为: cdcSyncHandler
  *

@@ -61,7 +61,7 @@ public class PythonExecutorService {
         XxlJobHelper.log(">>>>>> 开始执行 Python 脚本: {}, interpreter: {}", scriptPath, interpreterPath);
 
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.redirectErrorStream(true);                       // stdout/stderr 合并，避免顺序错乱
+        pb.redirectErrorStream(true);                        // stdout/stderr 合并，避免顺序错乱
         pb.directory(scriptFile.getParentFile());            // 工作目录设为脚本所在目录，便于脚本内相对路径引用同目录资源
         pb.environment().put("PYTHONIOENCODING", "UTF-8");   // 避免中文输出在部分环境下乱码/异常
         pb.environment().put("PYTHONUNBUFFERED", "1");       // 关闭输出缓冲，保证日志实时性
