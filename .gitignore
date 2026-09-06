@@ -35,4 +35,4 @@ logs/
 
 application*.properties
 
-src/test/
+**/src/test/
