@@ -1,4 +1,4 @@
-package com.xxl.job.executor.cdc.sync;
+package com.xxl.job.executor.cdc.synchandler;
 
 import com.xxl.job.executor.cdc.meta.CdcTableDef;
 import org.springframework.stereotype.Component;

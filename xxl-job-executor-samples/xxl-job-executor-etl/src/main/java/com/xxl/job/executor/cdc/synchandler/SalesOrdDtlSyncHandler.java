@@ -1,7 +1,8 @@
-package com.xxl.job.executor.cdc.sync;
+package com.xxl.job.executor.cdc.synchandler;
 
 import com.xxl.job.executor.cdc.mapper.SalesOrdDtlMapper;
 import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -19,7 +20,7 @@ public class SalesOrdDtlSyncHandler implements CdcTableSyncHandler {
 
     @Override
     public CdcTableDef tableDef() {
-        return CdcTableDef.SALESORDDTL;
+        return CdcTableRegistry.SALESORDDTL;
     }
 
     @Override

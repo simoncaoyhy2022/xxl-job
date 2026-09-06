@@ -1,7 +1,8 @@
-package com.xxl.job.executor.cdc.sync;
+package com.xxl.job.executor.cdc.synchandler;
 
 import com.xxl.job.executor.cdc.mapper.ProdOrdHdrMapper;
 import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -18,7 +19,7 @@ public class ProdOrdHdrSyncHandler implements CdcTableSyncHandler {
 
     @Override
     public CdcTableDef tableDef() {
-        return CdcTableDef.PRODORDHDR;
+        return CdcTableRegistry.PRODORDHDR;
     }
 
     @Override

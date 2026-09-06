@@ -4,8 +4,11 @@ import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.executor.cdc.config.CdcSourceProperties;
 import com.xxl.job.executor.cdc.config.SourceDataSourceRegistry;
 import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
 import com.xxl.job.executor.cdc.service.CdcExtractService;
 import com.xxl.job.executor.cdc.service.CdcWatermarkService;
+import com.xxl.job.executor.cdc.synchandler.CdcTableSyncHandler;
+import com.xxl.job.executor.cdc.synchandler.CdcTableSyncHandlerRegistry;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +24,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-/** Coordinates the common CDC extraction, batching, and watermark workflow. */
+/**
+ * CDC 同步编排器：负责指挥各模块工作；
+ */
 @Component
 public class CdcSyncOrchestrator {
     private static final Logger logger = LoggerFactory.getLogger(CdcSyncOrchestrator.class);
@@ -38,6 +43,10 @@ public class CdcSyncOrchestrator {
     @Resource
     private CdcTableSyncHandlerRegistry handlerRegistry;
 
+    /**
+     * 同步所有生产型工厂的订单和工单
+     * 加上 pmc 的订单
+     */
     public void syncAllProd() {
         List<String> bps = cdcSourceProperties.getSources().stream()
                 .filter(c -> c.isProd() || "pmc".equals(c.getId()))
@@ -47,8 +56,9 @@ public class CdcSyncOrchestrator {
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<? extends Future<?>> futures = bps.stream()
                     .map(bp -> executor.submit(() -> {
-                        for (CdcTableDef def : CdcTableDef.ALL) {
-                            if ("pmc".equals(bp) && def == CdcTableDef.PRODORDHDR) {
+                        for (CdcTableDef def : CdcTableRegistry.all()) {
+                            if ("pmc".equals(bp)
+                                    && CdcTableRegistry.PRODORDHDR.getCaptureInstance().equals(def.getCaptureInstance())) {
                                 // 跳过pmc的工单表（pmc只同步订单表）
                                 continue;
                             }

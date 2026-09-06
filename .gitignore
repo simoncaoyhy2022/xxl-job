@@ -33,8 +33,6 @@ logs/
 # 本地数据文件夹（仅忽略根目录下的 data 文件夹）
 /data/
 
-**/src/main/resources/application.properties
+application*.properties
 
-!**/src/main/resources/application.properties.template
-
-/xxl-job-executor-samples/xxl-job-executor-etl/src/test/
+src/test/
