@@ -35,7 +35,6 @@ public final class CdcTableRegistry {
     // 工单和订单
     private static final List<CdcTableDef> ALL = List.of(PRODORDHDR, SALESORDHDR, SALESORDDTL);
 
-    // todo:pmc数据库的几张维度表
 
     private CdcTableRegistry() {
     }

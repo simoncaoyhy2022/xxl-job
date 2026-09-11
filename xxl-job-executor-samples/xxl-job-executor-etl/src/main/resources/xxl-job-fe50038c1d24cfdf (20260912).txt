@@ -1,0 +1,3383 @@
+Directory structure:
+└── xxl-job-executor-etl/
+    ├── Dockerfile
+    ├── pom.xml
+    └── src/
+        └── main/
+            ├── java/
+            │   └── com/
+            │       └── xxl/
+            │           └── job/
+            │               └── executor/
+            │                   ├── EtlExecutorApplication.java
+            │                   ├── cdc/
+            │                   │   ├── config/
+            │                   │   │   ├── CdcSourceProperties.java
+            │                   │   │   └── SourceDataSourceRegistry.java
+            │                   │   ├── jobhandler/
+            │                   │   │   └── CdcSyncProdHandler.java
+            │                   │   ├── mapper/
+            │                   │   │   ├── ProdOrdHdrMapper.java
+            │                   │   │   ├── SalesOrdDtlMapper.java
+            │                   │   │   └── SalesOrdHdrMapper.java
+            │                   │   ├── meta/
+            │                   │   │   ├── CdcTableDef.java
+            │                   │   │   └── CdcTableRegistry.java
+            │                   │   ├── service/
+            │                   │   │   ├── CdcExtractService.java
+            │                   │   │   └── CdcWatermarkService.java
+            │                   │   ├── sync/
+            │                   │   │   └── CdcSyncOrchestrator.java
+            │                   │   └── synchandler/
+            │                   │       ├── CdcTableSyncHandler.java
+            │                   │       ├── CdcTableSyncHandlerRegistry.java
+            │                   │       ├── ProdOrdHdrSyncHandler.java
+            │                   │       ├── SalesOrdDtlSyncHandler.java
+            │                   │       └── SalesOrdHdrSyncHandler.java
+            │                   ├── config/
+            │                   │   ├── HopInitializer.java
+            │                   │   ├── KettleInitializer.java
+            │                   │   ├── MailAccountUtil.java
+            │                   │   └── XxlJobConfig.java
+            │                   ├── jobhandler/
+            │                   │   └── EtlJobHandler.java
+            │                   └── service/
+            │                       ├── EtlAlarmService.java
+            │                       ├── HopExecutorService.java
+            │                       ├── KettleExecutorService.java
+            │                       ├── PythonExecutorService.java
+            │                       └── ScriptArtifactService.java
+            └── resources/
+                ├── application.properties.template
+                ├── kettle-password-encoder-plugins.xml
+                ├── logback.xml
+                └── mapper/
+                    ├── ProdOrdHrdMapper.xml
+                    ├── SalesOrdDtlMapper.xml
+                    └── SalesOrdHrdMapper.xml
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/Dockerfile
+================================================
+# base image
+FROM eclipse-temurin:17-jre
+
+# maintainer
+MAINTAINER xuxueli
+
+# set params
+ENV PARAMS=""
+
+# set timezone
+ENV TZ=PRC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# copy jar
+ADD target/xxl-job-executor-etl-*.jar /app.jar
+
+# command
+# log home: -e LOG_HOME=/data/applogs
+# jvm options: -e JAVA_OPTS="-Xms128m -Xmx128m"
+# app params: -e PARAMS="--server.port=8080"
+ENTRYPOINT ["sh","-c","java ${LOG_HOME:+-DLOG_HOME=$LOG_HOME} -jar $JAVA_OPTS /app.jar $PARAMS"]
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/pom.xml
+================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.xuxueli</groupId>
+        <artifactId>xxl-job-executor-samples</artifactId>
+        <version>3.5.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>
+        xxl-job-executor-etl
+    </artifactId>
+    <packaging>jar</packaging>
+
+    <name>${project.artifactId}</name>
+    <description>Example executor project for spring boot.</description>
+    <url>https://www.xuxueli.com/</url>
+
+    <properties>
+        <hop.version>2.18.1</hop.version>
+    </properties>
+
+    <dependencies>
+        <!-- spring-boot-starter-web (spring-webmvc + tomcat) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- xxl-job-core -->
+        <dependency>
+            <groupId>com.xuxueli</groupId>
+            <artifactId>xxl-job-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
+            <version>1.2.24</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Mysql驱动包 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>8.2.2.jre8</version>
+        </dependency>
+
+        <!-- SQL Server 2005 老版本兼容驱动 -->
+        <dependency>
+            <groupId>net.sourceforge.jtds</groupId>
+            <artifactId>jtds</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+
+        <!-- hop-ui -->
+        <dependency>
+            <groupId>org.apache.hop</groupId>
+            <artifactId>hop-ui</artifactId>
+            <version>${hop.version}</version>
+        </dependency>
+
+        <!-- hop-core -->
+        <dependency>
+            <groupId>org.apache.hop</groupId>
+            <artifactId>hop-core</artifactId>
+            <version>${hop.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-collections</groupId>
+                    <artifactId>commons-collections</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-vfs2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-nop</artifactId>
+                </exclusion>
+                <!-- 瘦身：HopServer / REST 相关 -->
+                <exclusion>
+                    <groupId>org.eclipse.jetty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.jetty.websocket</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.containers</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.inject</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.media</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+                <exclusion>
+                    <groupId>org.glassfish.hk2</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.hk2.external</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+                <!-- 瘦身：gRPC + GCP 认证（Beam/云相关，本地引擎用不到） -->
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.auth</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.api</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- 瘦身：SVG 渲染 -->
+                <exclusion>
+                    <groupId>org.apache.xmlgraphics</groupId>
+                    <artifactId>batik-all</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.xmlgraphics</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+            </exclusions>
+        </dependency>
+
+        <!-- hop-engine -->
+        <dependency>
+            <groupId>org.apache.hop</groupId>
+            <artifactId>hop-engine</artifactId>
+            <version>${hop.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-collections</groupId>
+                    <artifactId>commons-collections</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-vfs2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <!-- 瘦身：HopServer / REST 相关 -->
+                <exclusion>
+                    <groupId>org.eclipse.jetty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.jetty.websocket</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.containers</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.inject</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.media</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.hk2</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.hk2.external</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+                <!-- 瘦身：gRPC + GCP 认证 -->
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.auth</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.api</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- 瘦身：SVG 渲染 -->
+                <exclusion>
+                    <groupId>org.apache.xmlgraphics</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+            </exclusions>
+        </dependency>
+
+        <!-- kettle依赖的标准的开源公共库 -->
+        <dependency>
+            <groupId>org.safehaus.jug</groupId>
+            <artifactId>jug</artifactId>
+            <version>2.0.0</version>
+            <classifier>lgpl</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml-schemas</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.xmlbeans</groupId>
+            <artifactId>xmlbeans</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.sourceforge.jexcelapi</groupId>
+            <artifactId>jxl</artifactId>
+            <version>2.6.12</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-vfs2</artifactId>
+            <version>2.10.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.54</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>32.0.1-jre</version> <!-- 修正为 -jre 版本 -->
+        </dependency>
+
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scannotation</groupId>
+            <artifactId>scannotation</artifactId>
+            <version>1.0.3</version>
+        </dependency>
+
+        <!-- kettle local start-->
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>kettle-core-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>kettle-engine-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>metastore-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>pentaho-encryption-support-9.3.0.0-428</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>js</artifactId>
+            <version>1.7R3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>libformula</artifactId>
+            <version>9.3.0.0-428</version>
+        </dependency>
+
+        <dependency>
+            <groupId>local.kettle</groupId>
+            <artifactId>libbase</artifactId>
+            <version>9.3.0.0-428</version>
+        </dependency>
+
+        <!-- kettle local end-->
+
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.40</version>
+        </dependency>
+
+        <!-- 补充 Hutool 邮件工具所需的 javax.mail 依赖 -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>1.6.2</version>
+        </dependency>
+
+    </dependencies>
+
+<!--    <build>-->
+<!--        <plugins>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--                <version>${spring-boot.version}</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <goals>-->
+<!--                            <goal>repackage</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+<!--    </build>-->
+
+    <build>
+        <plugins>
+            <!-- 1. Spring Boot 瘦包插件：不打入任何第三方依赖，并开启 PropertiesLauncher -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <configuration>
+                    <!-- 必须设置为 ZIP 布局，以便支持 -Dloader.path -->
+                    <layout>ZIP</layout>
+                    <!-- 排除全部依赖，只打业务代码 -->
+                    <includes>
+                        <include>
+                            <groupId>nothing</groupId>
+                            <artifactId>nothing</artifactId>
+                        </include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 2. 依赖复制插件：把所有依赖提取到 target/lib 目录供服务端使用 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                            <!-- 导出时排除 Windows 专属 SWT，避免上传多余无用包到 Linux -->
+                            <excludeArtifactIds>
+                                org.eclipse.swt.win32.win32.x86_64
+                            </excludeArtifactIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/EtlExecutorApplication.java
+================================================
+package com.xxl.job.executor;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+/**
+ * @author Simon Cao 2026-08-08 11:04:00
+ */
+@SpringBootApplication
+@MapperScan("com.xxl.job.executor.cdc.mapper")
+public class EtlExecutorApplication {
+
+	public static void main(String[] args) {
+        SpringApplication.run(EtlExecutorApplication.class, args);
+	}
+
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/config/CdcSourceProperties.java
+================================================
+package com.xxl.job.executor.cdc.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Configuration
+@ConfigurationProperties(prefix = "etl.cdc")
+public class CdcSourceProperties {
+
+    /**
+     * 源库列表
+     */
+    private List<SourceConfig> sources = new ArrayList<>();
+
+    /**
+     * 源库连接池通用参数
+     */
+    private PoolConfig pool = new PoolConfig();
+
+    public List<SourceConfig> getSources() {
+        return sources;
+    }
+
+    public void setSources(List<SourceConfig> sources) {
+        this.sources = sources;
+    }
+
+    public PoolConfig getPool() {
+        return pool;
+    }
+
+    public void setPool(PoolConfig pool) {
+        this.pool = pool;
+    }
+
+    public static class SourceConfig {
+        private String id;
+        private String jdbcUrl;
+        private String username;
+        private String password;
+        private String driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+        private boolean enabled = true;
+        // 生产工厂或虚拟工厂
+        private boolean prod;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getJdbcUrl() {
+            return jdbcUrl;
+        }
+
+        public void setJdbcUrl(String jdbcUrl) {
+            this.jdbcUrl = jdbcUrl;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getDriverClassName() {
+            return driverClassName;
+        }
+
+        public void setDriverClassName(String driverClassName) {
+            this.driverClassName = driverClassName;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public boolean isProd() {
+            return prod;
+        }
+
+        public void setProd(boolean prod) {
+            this.prod = prod;
+        }
+    }
+
+    public static class PoolConfig {
+        private int initialSize = 1;
+        private int minIdle = 1;
+        private int maxActive = 3;
+        private int maxWait = 5000;
+        private String validationQuery = "SELECT 1";
+
+        public int getInitialSize() {
+            return initialSize;
+        }
+
+        public void setInitialSize(int initialSize) {
+            this.initialSize = initialSize;
+        }
+
+        public int getMinIdle() {
+            return minIdle;
+        }
+
+        public void setMinIdle(int minIdle) {
+            this.minIdle = minIdle;
+        }
+
+        public int getMaxActive() {
+            return maxActive;
+        }
+
+        public void setMaxActive(int maxActive) {
+            this.maxActive = maxActive;
+        }
+
+        public int getMaxWait() {
+            return maxWait;
+        }
+
+        public void setMaxWait(int maxWait) {
+            this.maxWait = maxWait;
+        }
+
+        public String getValidationQuery() {
+            return validationQuery;
+        }
+
+        public void setValidationQuery(String validationQuery) {
+            this.validationQuery = validationQuery;
+        }
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/config/SourceDataSourceRegistry.java
+================================================
+package com.xxl.job.executor.cdc.config;
+
+import com.alibaba.druid.pool.DruidDataSource;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * CDC 源库连接池注册表。
+ * 与 target 报表库（Spring 标准单数据源）分离管理：
+ * source 侧只做原生 JDBC 查询，不接入 MyBatis SqlSessionFactory。
+ */
+@Component
+public class SourceDataSourceRegistry {
+
+    private static final Logger logger = LoggerFactory.getLogger(SourceDataSourceRegistry.class);
+
+    @Resource
+    private CdcSourceProperties properties;
+
+    private final Map<String, DruidDataSource> pools = new LinkedHashMap<>();
+
+    @PostConstruct
+    public void init() {
+        for (CdcSourceProperties.SourceConfig cfg : properties.getSources()) {
+            if (!cfg.isEnabled()) {
+                logger.info(">>>>>> CDC source [{}] disabled, skip.", cfg.getId());
+                continue;
+            }
+            if (pools.containsKey(cfg.getId())) {
+                throw new IllegalStateException("重复的 CDC 源库 id: " + cfg.getId());
+            }
+            pools.put(cfg.getId(), buildPool(cfg));
+            logger.info(">>>>>> CDC source [{}] datasource ready.", cfg.getId());
+        }
+        if (pools.isEmpty()) {
+            logger.warn(">>>>>> 未配置任何启用的 CDC 源库，请检查 etl.cdc.sources.* 配置。");
+        }
+    }
+
+    private DruidDataSource buildPool(CdcSourceProperties.SourceConfig cfg) {
+        CdcSourceProperties.PoolConfig poolCfg = properties.getPool();
+
+        DruidDataSource ds = new DruidDataSource();
+        ds.setName("cdc-source-" + cfg.getId());
+        ds.setUrl(cfg.getJdbcUrl());
+        ds.setUsername(cfg.getUsername());
+        ds.setPassword(cfg.getPassword());
+        ds.setDriverClassName(cfg.getDriverClassName());
+
+        ds.setInitialSize(poolCfg.getInitialSize());
+        ds.setMinIdle(poolCfg.getMinIdle());
+        ds.setMaxActive(poolCfg.getMaxActive());
+        ds.setMaxWait(poolCfg.getMaxWait());
+        ds.setValidationQuery(poolCfg.getValidationQuery());
+        ds.setTestWhileIdle(true);
+        ds.setTestOnBorrow(false);
+        ds.setTestOnReturn(false);
+
+        return ds;
+    }
+
+    /** 获取指定源库的数据源，不存在或未启用返回 null */
+    public DataSource get(String sourceId) {
+        return pools.get(sourceId);
+    }
+
+    /** 遍历所有已启用源库的 id，供编排器逐个提交任务 */
+    public List<String> listSourceIds() {
+        return List.copyOf(pools.keySet());
+    }
+
+    public Map<String, DruidDataSource> snapshot() {
+        return Collections.unmodifiableMap(pools);
+    }
+
+    @PreDestroy
+    public void close() {
+        pools.forEach((id, ds) -> {
+            try {
+                ds.close();
+            } catch (Exception e) {
+                logger.warn(">>>>>> close CDC source [{}] datasource error: {}", id, e.getMessage());
+            }
+        });
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/jobhandler/CdcSyncProdHandler.java
+================================================
+package com.xxl.job.executor.cdc.jobhandler;
+
+import com.xxl.job.core.context.XxlJobHelper;
+import com.xxl.job.core.handler.annotation.XxlJob;
+import com.xxl.job.executor.cdc.sync.CdcSyncOrchestrator;
+import jakarta.annotation.Resource;
+import org.springframework.stereotype.Component;
+
+/**
+ * CDC 增量同步 XxlJob 入口
+ * 这里的Prod表示生产型的源库，区别于PMC等虚拟BP系统的的源库
+ * <p>
+ * 在 XXL-JOB 调度中心配置 JobHandler 名称为: cdcSyncHandler
+ *
+ */
+@Component
+public class CdcSyncProdHandler {
+
+    @Resource
+    private CdcSyncOrchestrator cdcSyncOrchestrator;
+
+    @XxlJob("cdcSyncProdHandler")
+    public void sync() {
+        // 无参
+        // String param = XxlJobHelper.getJobParam();
+        try {
+            XxlJobHelper.log(">>>>>> 开始 CDC 增量同步 (全部源库 x 全部表)");
+            cdcSyncOrchestrator.syncAllProd();
+            XxlJobHelper.handleSuccess("CDC 增量同步执行完毕");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("CDC 增量同步异常: " + e.getMessage());
+        }
+    }
+
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/mapper/ProdOrdHdrMapper.java
+================================================
+package com.xxl.job.executor.cdc.mapper;
+
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+import java.util.Map;
+
+public interface ProdOrdHdrMapper {
+
+    int upsertBatch(List<Map<String, Object>> list);
+
+    int deleteBatch(List<Map<String, Object>> list);
+
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/mapper/SalesOrdDtlMapper.java
+================================================
+package com.xxl.job.executor.cdc.mapper;
+
+import java.util.List;
+import java.util.Map;
+
+public interface SalesOrdDtlMapper {
+    int upsertBatch(List<Map<String, Object>> list);
+
+    int deleteBatch(List<Map<String, Object>> list);
+
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/mapper/SalesOrdHdrMapper.java
+================================================
+package com.xxl.job.executor.cdc.mapper;
+
+import java.util.List;
+import java.util.Map;
+
+public interface SalesOrdHdrMapper {
+    int upsertBatch(List<Map<String, Object>> list);
+
+    int deleteBatch(List<Map<String, Object>> list);
+
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/meta/CdcTableDef.java
+================================================
+package com.xxl.job.executor.cdc.meta;
+
+/**
+ * CDC 表元数据定义。
+ */
+public class CdcTableDef {
+    private final String captureInstance;
+    private final String[] columns;
+    private final String[] pkColumns;
+    private final String targetTable;
+
+    public CdcTableDef(String captureInstance, String[] columns, String[] pkColumns, String targetTable) {
+        this.captureInstance = captureInstance;
+        this.columns = columns;
+        this.pkColumns = pkColumns;
+        this.targetTable = targetTable;
+    }
+
+    public String getCaptureInstance() {
+        return captureInstance;
+    }
+
+    public String[] getColumns() {
+        return columns;
+    }
+
+    public String[] getPkColumns() {
+        return pkColumns;
+    }
+
+    public String getTargetTable() {
+        return targetTable;
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/meta/CdcTableRegistry.java
+================================================
+package com.xxl.job.executor.cdc.meta;
+
+import java.util.List;
+
+/**
+ * CDC 内置表定义注册表。
+ */
+public final class CdcTableRegistry {
+    public static final CdcTableDef PRODORDHDR = new CdcTableDef(
+            "dbo_t_prodordhdr",
+            new String[]{"F_ID", "F_DOCDATE", "F_DOCTIME", "F_DUEDATE", "F_SALESID", "F_ITEMID", "F_PARTID", "F_DOCQTY", "F_DUEQTY",
+                    "F_SHEETQTY", "F_RESQTY", "F_FREEQTY", "F_PAPERWID", "F_SHEETLEN", "F_SHEETWID", "F_LCUT", "F_WCUT", "F_JOINSHEET",
+                    "F_EDITBY", "F_CONFBY", "F_ISCONF", "F_ISCLOSE", "F_CLOSETYPE", "F_CLOSEDATE", "F_RMRK", "F_UNITAREA", "F_ISOUT",
+                    "F_UPCUT", "F_LOWCUT", "F_UPWID", "F_LOWWID", "F_PAPER", "F_FLUTEID", "F_BIANLIAO", "F_BUSHU", "F_BUSHUREASON",
+                    "F_BPINV", "F_TRANSPORTEDTIME", "F_BOARDAREA", "F_LAYERTYPE", "F_ScoreType", "F_BIANLIAOPRODID", "F_BIANLIAOCOUNT",
+                    "F_TechFlowID", "F_RMRK_CONVERTPROD", "F_PRODIDBYINVSET", "F_FeiLiao", "F_ReWork", "F_ReWorkProdID", "F_ExceedProdID",
+                    "F_DIENUM", "F_CreatedBY", "F_TECHFLOWMAINID", "F_ScoreIsControledByMinVal", "F_WIPLen", "F_WIPWidth", "F_FLOWID",
+                    "F_IsBPCorrugatorAccepted", "F_BPCorrugatorAcceptBy", "F_BPCorrugatorUploaded"},
+            new String[]{"F_ID"},
+            "t_prodordhdr");
+
+    public static final CdcTableDef SALESORDHDR = new CdcTableDef(
+            "dbo_t_salesordhdr",
+            new String[]{"F_ID", "F_CUSTORDID", "F_DOCDATE", "CAST(F_DOCDATE AS DATE) AS F_Date", "F_CUSTID", "F_CreatedBY", "F_EDITBY", "F_CONFBY", "F_CloseBy", "F_ISCONF",
+                    "F_ISCLOSE", "F_ITEMID", "F_DOCQTY", "F_TRDTYPE", "F_PRNVER", "F_TAXRATE", "F_CURRTYPE", "F_DRAWER", "F_LEVELID", "F_CUSTLEVELID"},
+            new String[]{"F_ID"},
+            "fact_sales_order_hdr");
+
+    public static final CdcTableDef SALESORDDTL = new CdcTableDef(
+            "dbo_t_salesorddtl",
+            new String[]{"F_SALESID", "F_ITEMID", "F_DOCQTY", "F_UNITAMT", "F_BOARDLEN", "F_BOARDWID", "F_PRICEBOARDWID", "F_BPINV", "F_ISINV", "F_INVQTY"},
+            new String[]{"F_SALESID", "F_ITEMID"},
+            "fact_sales_order_dtl");
+
+    // 工单和订单
+    private static final List<CdcTableDef> ALL = List.of(PRODORDHDR, SALESORDHDR, SALESORDDTL);
+
+    // todo:pmc数据库的几张维度表
+
+    private CdcTableRegistry() {
+    }
+
+    public static List<CdcTableDef> all() {
+        return ALL;
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/service/CdcExtractService.java
+================================================
+package com.xxl.job.executor.cdc.service;
+
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * SQL Server CDC 净变更（net changes）抽取。
+ * <p>
+ * 使用 net changes 而非 all changes：同一主键在 [fromLsn, toLsn] 区间内的多次变更，
+ * 会被 SQL Server 自动合并为一条最终结果（insert+update 合并为 insert，多次 update 合并为一次），
+ * __$operation 只会是 1=delete、2=insert、4=update，不会出现 3（update 前镜像，net changes 不返回）。
+ */
+@Component
+public class CdcExtractService {
+
+    /**
+     * 抽取 (fromLsn, toLsn] 区间内的净变更。
+     *
+     * @param fromLsn 上次同步水位；首次同步传 null，内部会 fallback 到该表的 min_lsn
+     * @param toLsn   本次同步截止水位，通常是本次任务开始时取的 sys.fn_cdc_get_max_lsn()
+     */
+    public List<Map<String, Object>> fetchNetChanges(DataSource ds, CdcTableDef def,
+                                                     byte[] fromLsn, byte[] toLsn) {
+        byte[] effectiveFrom = fromLsn;
+        try (Connection c = ds.getConnection()) {
+
+            // 首次同步：没有水位记录，从该 capture instance 的最小可用 LSN 开始
+            if (effectiveFrom == null) {
+                effectiveFrom = getMinLsn(c, def.getCaptureInstance());
+                if (effectiveFrom == null) {
+                    // 该 capture instance 尚无任何可用变更（刚开启 CDC 或日志已被清理），本次无数据
+                    return new ArrayList<>();
+                }
+            } else {
+                // 非首次同步，跳过上次已处理的边界，避免闭区间重复
+                effectiveFrom = incrementLsn(ds, effectiveFrom);
+            }
+
+            // from > to：说明 toLsn 是在极短时间窗口内取的、日志还没推进，直接返回空，避免触发函数报错
+            // 将 Arrays.compare 改为 Arrays.compareUnsigned
+            if (Arrays.compareUnsigned(effectiveFrom, toLsn) > 0) {
+                return new ArrayList<>();
+            }
+
+            String cols = String.join(",", def.getColumns());
+            // 添加固定列：BP,F_dataSource,f_updateTime
+            String sql = "SELECT [__$operation], dbo.getbpname() as BP," +
+                    cols +
+                    ", 'xxl-job-cdc' as F_dataSource,getdate() as f_updateTime" +
+                    " FROM cdc.fn_cdc_get_net_changes_" + def.getCaptureInstance() +
+                    "(?, ?, 'all with mask')";
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setBytes(1, effectiveFrom);
+                ps.setBytes(2, toLsn);
+                try (ResultSet rs = ps.executeQuery()) {
+                    ResultSetMetaData meta = rs.getMetaData();
+                    while (rs.next()) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        for (int i = 1; i <= meta.getColumnCount(); i++) {
+                            row.put(meta.getColumnLabel(i), rs.getObject(i));
+                        }
+                        result.add(row);
+                    }
+                }
+            }
+            return result;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("抽取净变更失败, captureInstance=" + def.getCaptureInstance(), e);
+        }
+    }
+
+    // CdcExtractService 新增
+    public byte[] incrementLsn(DataSource ds, byte[] lsn) {
+        String sql = "SELECT sys.fn_cdc_increment_lsn(?)";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setBytes(1, lsn);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBytes(1) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("increment lsn 失败", e);
+        }
+    }
+
+    /**
+     * 指定 capture instance 当前可用的最小 LSN（该表 CDC 变更日志的起点，随日志清理任务向前推进）。
+     * 返回 null 表示该 capture instance 尚无任何变更记录。
+     */
+    public byte[] getMinLsn(DataSource ds, String captureInstance) {
+        try (Connection c = ds.getConnection()) {
+            return getMinLsn(c, captureInstance);
+        } catch (SQLException e) {
+            throw new RuntimeException("获取 min_lsn 失败, captureInstance=" + captureInstance, e);
+        }
+    }
+
+    private byte[] getMinLsn(Connection c, String captureInstance) throws SQLException {
+        String sql = "SELECT sys.fn_cdc_get_min_lsn(?)";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, captureInstance);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBytes(1) : null;
+            }
+        }
+    }
+
+    /**
+     * 整个数据库当前的最大 LSN（跨所有 capture instance 共用，日志越晚越大）。
+     * 通常在任务开始时取一次，作为本轮同步的 toLsn。
+     */
+    public byte[] getMaxLsn(DataSource ds) {
+        String sql = "SELECT sys.fn_cdc_get_max_lsn()";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getBytes(1) : null;
+        } catch (SQLException e) {
+            throw new RuntimeException("获取 max_lsn 失败", e);
+        }
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/service/CdcWatermarkService.java
+================================================
+package com.xxl.job.executor.cdc.service;
+
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+@Component
+public class CdcWatermarkService {
+
+    public byte[] getLastLsn(DataSource ds, String captureInstance) {
+        String sql = "SELECT last_lsn FROM etl_cdc_watermark WHERE capture_instance = ?";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, captureInstance);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBytes(1) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("读取 watermark 失败, captureInstance=" + captureInstance, e);
+        }
+    }
+
+    public void upsertLsn(DataSource ds, String captureInstance, byte[] lsn) {
+        // SQL Server 2008 支持 MERGE；WITH (HOLDLOCK) 避免并发写同一行时的插入冲突
+        String sql = """
+                MERGE etl_cdc_watermark WITH (HOLDLOCK) AS target
+                USING (SELECT ? AS capture_instance, ? AS last_lsn) AS src
+                ON target.capture_instance = src.capture_instance
+                WHEN MATCHED THEN UPDATE SET last_lsn = src.last_lsn, last_sync_time = GETDATE()
+                WHEN NOT MATCHED THEN INSERT (capture_instance, last_lsn, last_sync_time)
+                    VALUES (src.capture_instance, src.last_lsn, GETDATE());
+                """;
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, captureInstance);
+            ps.setBytes(2, lsn);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("写入 watermark 失败, captureInstance=" + captureInstance, e);
+        }
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/sync/CdcSyncOrchestrator.java
+================================================
+package com.xxl.job.executor.cdc.sync;
+
+import com.xxl.job.core.context.XxlJobHelper;
+import com.xxl.job.executor.cdc.config.CdcSourceProperties;
+import com.xxl.job.executor.cdc.config.SourceDataSourceRegistry;
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
+import com.xxl.job.executor.cdc.service.CdcExtractService;
+import com.xxl.job.executor.cdc.service.CdcWatermarkService;
+import com.xxl.job.executor.cdc.synchandler.CdcTableSyncHandler;
+import com.xxl.job.executor.cdc.synchandler.CdcTableSyncHandlerRegistry;
+import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+
+/**
+ * CDC 同步编排器：负责指挥各模块工作；
+ */
+@Component
+public class CdcSyncOrchestrator {
+    private static final Logger logger = LoggerFactory.getLogger(CdcSyncOrchestrator.class);
+    private static final int MAX_PARAMS_PER_BATCH = 3000;
+
+    @Resource
+    private SourceDataSourceRegistry registry;
+    @Resource
+    private CdcSourceProperties cdcSourceProperties;
+    @Resource
+    private CdcExtractService extractService;
+    @Resource
+    private CdcWatermarkService watermarkService;
+    @Resource
+    private CdcTableSyncHandlerRegistry handlerRegistry;
+
+    /**
+     * 同步所有生产型工厂的订单和工单
+     * 加上 pmc 的订单
+     */
+    public void syncAllProd() {
+        List<String> bps = cdcSourceProperties.getSources().stream()
+                .filter(c -> c.isProd() || "pmc".equals(c.getId()))
+                .map(CdcSourceProperties.SourceConfig::getId)
+                .toList();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<? extends Future<?>> futures = bps.stream()
+                    .map(bp -> executor.submit(() -> {
+                        for (CdcTableDef def : CdcTableRegistry.all()) {
+                            if ("pmc".equals(bp)
+                                    && CdcTableRegistry.PRODORDHDR.getCaptureInstance().equals(def.getCaptureInstance())) {
+                                // 跳过pmc的工单表（pmc只同步订单表）
+                                continue;
+                            }
+                            syncOne(bp, def);
+                        }
+                    }))
+                    .toList();
+
+            List<Throwable> errors = new ArrayList<>();
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (ExecutionException e) {
+                    errors.add(e.getCause() != null ? e.getCause() : e);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("CDC task interrupted", e);
+                }
+            }
+
+            if (!errors.isEmpty()) {
+                String errorMsg = errors.stream()
+                        .map(Throwable::getMessage)
+                        .collect(Collectors.joining("; "));
+                throw new RuntimeException("CDC synchronization contains failed tasks: " + errorMsg);
+            }
+        }
+    }
+
+    public void syncBP(String bp, CdcTableDef def) {
+        syncOne(bp, def);
+    }
+
+    private void syncOne(String bp, CdcTableDef def) {
+        DataSource ds = registry.get(bp);
+        if (ds == null) {
+            log("source[{}] is disabled or does not exist; skip captureInstance={}", bp, def.getCaptureInstance());
+            return;
+        }
+
+        CdcTableSyncHandler handler = handlerRegistry.get(def);
+        if (handler == null) {
+            log("No sync handler registered for captureInstance={}; skip", def.getCaptureInstance());
+            return;
+        }
+
+        try {
+            byte[] fromLsn = watermarkService.getLastLsn(ds, def.getCaptureInstance());
+            byte[] toLsn = extractService.getMaxLsn(ds);
+            if (toLsn == null) {
+                log("source[{}] captureInstance={} returned an empty max_lsn; skip", bp, def.getCaptureInstance());
+                return;
+            }
+            if (fromLsn != null && Arrays.compareUnsigned(fromLsn, toLsn) >= 0) {
+                log("source[{}] captureInstance={} has no new changes; skip", bp, def.getCaptureInstance());
+                return;
+            }
+
+            List<Map<String, Object>> changes = extractService.fetchNetChanges(ds, def, fromLsn, toLsn);
+            int upsertCount = 0;
+            int deleteCount = 0;
+            if (!changes.isEmpty()) {
+                List<Map<String, Object>> upserts = new ArrayList<>();
+                List<Map<String, Object>> deletes = new ArrayList<>();
+                for (Map<String, Object> row : changes) {
+                    Object opObj = row.get("__$operation");
+                    int op = opObj instanceof Number ? ((Number) opObj).intValue() : -1;
+                    if (op == 1) {
+                        deletes.add(row);
+                    } else if (op == 2 || op == 4) {
+                        upserts.add(row);
+                    } else {
+                        log("source[{}] captureInstance={} has unknown operation={}; skip row", bp, def.getCaptureInstance(), op);
+                    }
+                }
+
+                int batchSize = batchSizeFor(def);
+                for (List<Map<String, Object>> batch : partition(upserts, batchSize)) {
+                    upsertCount += handler.upsert(bp, batch);
+                }
+                for (List<Map<String, Object>> batch : partition(deletes, batchSize)) {
+                    handler.delete(batch);
+                }
+                deleteCount = deletes.size();
+            }
+
+            watermarkService.upsertLsn(ds, def.getCaptureInstance(), toLsn);
+            log("BP[{}] captureInstance={} synchronized, upsert={}, delete={}",
+                    bp, def.getCaptureInstance(), upsertCount, deleteCount);
+        } catch (Exception e) {
+            log("source[{}] captureInstance={} synchronization failed: {}", bp, def.getCaptureInstance(), e.getMessage());
+            logger.error("CDC sync error, source={}, captureInstance={}", bp, def.getCaptureInstance(), e);
+            throw e;
+        }
+    }
+
+    private static <T> List<List<T>> partition(List<T> list, int size) {
+        List<List<T>> result = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            result.add(list.subList(i, Math.min(i + size, list.size())));
+        }
+        return result;
+    }
+
+    private int batchSizeFor(CdcTableDef def) {
+        int paramsPerRow = def.getColumns().length + 2;
+        return Math.max(50, MAX_PARAMS_PER_BATCH / paramsPerRow);
+    }
+
+    private void log(String pattern, Object... args) {
+        XxlJobHelper.log(pattern, args);
+        logger.info(pattern, args);
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/synchandler/CdcTableSyncHandler.java
+================================================
+package com.xxl.job.executor.cdc.synchandler;
+
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 单张 CDC 表的落库处理器：将净变更行分发到对应 Mapper 的 upsert / delete
+ */
+public interface CdcTableSyncHandler {
+
+    CdcTableDef tableDef();
+
+    int upsert(String bp, List<Map<String, Object>> rows);
+
+    void delete(List<Map<String, Object>> rows);
+
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/synchandler/CdcTableSyncHandlerRegistry.java
+================================================
+package com.xxl.job.executor.cdc.synchandler;
+
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Component
+public class CdcTableSyncHandlerRegistry {
+    private final Map<String, CdcTableSyncHandler> handlers;
+
+    public CdcTableSyncHandlerRegistry(List<CdcTableSyncHandler> handlers) {
+        this.handlers = handlers.stream().collect(Collectors.toUnmodifiableMap(
+                handler -> handler.tableDef().getCaptureInstance(),
+                Function.identity(),
+                (left, right) -> {
+                    throw new IllegalStateException("Duplicate CDC table sync handler: "
+                            + left.tableDef().getCaptureInstance());
+                }));
+    }
+
+    public CdcTableSyncHandler get(CdcTableDef tableDef) {
+        return handlers.get(tableDef.getCaptureInstance());
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/synchandler/ProdOrdHdrSyncHandler.java
+================================================
+package com.xxl.job.executor.cdc.synchandler;
+
+import com.xxl.job.executor.cdc.mapper.ProdOrdHdrMapper;
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
+import org.springframework.stereotype.Component;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class ProdOrdHdrSyncHandler implements CdcTableSyncHandler {
+    private final ProdOrdHdrMapper prodOrdHdrMapper;
+
+    public ProdOrdHdrSyncHandler(ProdOrdHdrMapper prodOrdHdrMapper) {
+        this.prodOrdHdrMapper = prodOrdHdrMapper;
+    }
+
+    @Override
+    public CdcTableDef tableDef() {
+        return CdcTableRegistry.PRODORDHDR;
+    }
+
+    @Override
+    public int upsert(String bp, List<Map<String, Object>> rows) {
+        List<Map<String, Object>> sortedRows = rows.stream()
+                .sorted(Comparator.comparing(row -> String.valueOf(row.get("F_ID"))))
+                .toList();
+        prodOrdHdrMapper.upsertBatch(sortedRows);
+        return sortedRows.size();
+    }
+
+    @Override
+    public void delete(List<Map<String, Object>> rows) {
+        prodOrdHdrMapper.deleteBatch(rows);
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/synchandler/SalesOrdDtlSyncHandler.java
+================================================
+package com.xxl.job.executor.cdc.synchandler;
+
+import com.xxl.job.executor.cdc.mapper.SalesOrdDtlMapper;
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
+import org.springframework.stereotype.Component;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+@Component
+public class SalesOrdDtlSyncHandler implements CdcTableSyncHandler {
+    private final SalesOrdDtlMapper salesOrdDtlMapper;
+
+    public SalesOrdDtlSyncHandler(SalesOrdDtlMapper salesOrdDtlMapper) {
+        this.salesOrdDtlMapper = salesOrdDtlMapper;
+    }
+
+    @Override
+    public CdcTableDef tableDef() {
+        return CdcTableRegistry.SALESORDDTL;
+    }
+
+    @Override
+    public int upsert(String bp, List<Map<String, Object>> rows) {
+        List<Map<String, Object>> filteredRows;
+        if ("pmc".equals(bp)) {
+            filteredRows = rows.stream()
+                    .filter(row -> String.valueOf(row.get("F_SALESID")).startsWith("TPS"))
+                    .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase()))
+                    .sorted(Comparator.comparing((Map<String, Object> row) -> String.valueOf(row.get("F_SALESID")))
+                            .thenComparing(row -> String.valueOf(row.get("F_ITEMID"))))
+                    .toList();
+        } else {
+            String sourceBp = bp.substring(0, 2).toUpperCase();
+            filteredRows = rows.stream()
+                    .filter(row -> Objects.equals(sourceBp, row.get("F_BPINV"))
+                            && !String.valueOf(row.get("F_SALESID")).startsWith("TPS"))
+                    .peek(row -> row.put("F_ITEMID", String.valueOf(row.get("F_ITEMID")).trim().toUpperCase()))
+                    .sorted(Comparator.comparing((Map<String, Object> row) -> String.valueOf(row.get("F_SALESID")))
+                            .thenComparing(row -> String.valueOf(row.get("F_ITEMID"))))
+                    .toList();
+        }
+        if (filteredRows.isEmpty()) {
+            return 0;
+        }
+        salesOrdDtlMapper.upsertBatch(filteredRows);
+        return filteredRows.size();
+    }
+
+    @Override
+    public void delete(List<Map<String, Object>> rows) {
+        salesOrdDtlMapper.deleteBatch(rows);
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/cdc/synchandler/SalesOrdHdrSyncHandler.java
+================================================
+package com.xxl.job.executor.cdc.synchandler;
+
+import com.xxl.job.executor.cdc.mapper.SalesOrdHdrMapper;
+import com.xxl.job.executor.cdc.meta.CdcTableDef;
+import com.xxl.job.executor.cdc.meta.CdcTableRegistry;
+import org.springframework.stereotype.Component;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+@Component
+public class SalesOrdHdrSyncHandler implements CdcTableSyncHandler {
+    private final SalesOrdHdrMapper salesOrdHdrMapper;
+
+    public SalesOrdHdrSyncHandler(SalesOrdHdrMapper salesOrdHdrMapper) {
+        this.salesOrdHdrMapper = salesOrdHdrMapper;
+    }
+
+    @Override
+    public CdcTableDef tableDef() {
+        return CdcTableRegistry.SALESORDHDR;
+    }
+
+    @Override
+    public int upsert(String bp, List<Map<String, Object>> rows) {
+        List<Map<String, Object>> filteredRows;
+        if ("pmc".equals(bp)) {
+            filteredRows = rows.stream()
+                    .filter(row -> "TPS".equals(row.get("F_CUSTLEVELID")))
+                    .peek(row -> row.put("BP", String.valueOf(row.get("F_LEVELID")).substring(0, 2).concat("BP")))
+                    .sorted(Comparator.comparing(row -> String.valueOf(row.get("F_ID"))))
+                    .toList();
+        } else {
+            String levelId = bp.substring(0, 2).toUpperCase() + "*";
+            filteredRows = rows.stream()
+                    .filter(row -> !"TPS".equals(row.get("F_CUSTLEVELID"))
+                            && Objects.equals(levelId, row.get("F_LEVELID")))
+                    .sorted(Comparator.comparing(row -> String.valueOf(row.get("F_ID"))))
+                    .toList();
+        }
+        if (filteredRows.isEmpty()) {
+            return 0;
+        }
+        salesOrdHdrMapper.upsertBatch(filteredRows);
+        return filteredRows.size();
+    }
+
+    @Override
+    public void delete(List<Map<String, Object>> rows) {
+        salesOrdHdrMapper.deleteBatch(rows);
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/config/HopInitializer.java
+================================================
+package com.xxl.job.executor.config;
+
+import org.apache.hop.core.HopEnvironment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+
+/**
+ * Apache Hop 环境初始化
+ *
+ * 与 KettleInitializer 不同：Hop 的 transform/action 均以独立插件 jar 存在，
+ * 不能像 Kettle 那样从 classpath zip 解压后注册，fat jar 内嵌插件会导致
+ * PluginRegistry 扫描失败。
+ *
+ * 部署要求：从官方发行包 apache-hop-client-x.x.x.zip 中取出 plugins/ 目录，
+ * 整体拷贝到宿主机固定路径（如 /usr/xxl-job/hop-plugins），并在启动脚本中
+ * 设置环境变量 HOP_PLUGIN_BASE_FOLDERS 指向该目录（多个目录用逗号分隔）。
+ *
+ * 例如 start-executor.sh 中：
+ *   export HOP_PLUGIN_BASE_FOLDERS=/usr/xxl-job/hop-plugins
+ */
+@Component
+public class HopInitializer implements InitializingBean {
+
+    private static final Logger log = LoggerFactory.getLogger(HopInitializer.class);
+
+    @Value("${hop.plugin.base-folders:}")
+    private String pluginBaseFoldersProp;
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        if (HopEnvironment.isInitialized()) {
+            return;
+        }
+
+        String pluginBaseFolders = resolvePluginBaseFolders();
+        if (pluginBaseFolders == null || pluginBaseFolders.isBlank()) {
+            throw new IllegalStateException(
+                    "Hop 插件目录未配置：请设置环境变量 HOP_PLUGIN_BASE_FOLDERS 或配置项 hop.plugin.base-folders，"
+                            + "指向从官方发行包解压出的 plugins 目录");
+        }
+        for (String folder : pluginBaseFolders.split(",")) {
+            File dir = new File(folder.trim());
+            if (!dir.isDirectory()) {
+                log.warn(">>>>>> Hop 插件目录不存在，请检查部署: {}", dir.getAbsolutePath());
+            }
+        }
+
+        // Hop 在 init() 时从该环境变量/系统属性读取插件扫描目录
+        if (System.getenv("HOP_PLUGIN_BASE_FOLDERS") == null) {
+            System.setProperty("HOP_PLUGIN_BASE_FOLDERS", pluginBaseFolders);
+        }
+
+        log.info(">>>>>> 正在初始化 Apache Hop 环境, pluginBaseFolders={}", pluginBaseFolders);
+        try {
+            HopEnvironment.init();
+        } catch (Exception e) {
+            log.error(">>>>>> Apache Hop 环境初始化失败，请确认 HOP_PLUGIN_BASE_FOLDERS 指向的是"
+                    + "完整的官方 plugins 目录（而非源码/空目录）", e);
+            throw e;
+        }
+        log.info(">>>>>> Apache Hop 环境初始化完成");
+    }
+
+    private String resolvePluginBaseFolders() {
+        String env = System.getenv("HOP_PLUGIN_BASE_FOLDERS");
+        if (env != null && !env.isBlank()) {
+            return env;
+        }
+        return pluginBaseFoldersProp;
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/config/KettleInitializer.java
+================================================
+package com.xxl.job.executor.config;
+
+import org.pentaho.di.core.KettleEnvironment;
+import org.pentaho.di.core.plugins.JobEntryPluginType;
+import org.pentaho.di.core.plugins.PluginFolder;
+import org.pentaho.di.core.plugins.StepPluginType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+/**
+ * Kettle 环境全局初始化配置
+ * 插件目录以 zip 形式打包在 jar 内部，首次启动时自动解压到本地磁盘，
+ * 后续启动检测到已解压则直接复用，避免每次都重复解压。
+ */
+@Component
+public class KettleInitializer implements InitializingBean {
+
+    private static final Logger log = LoggerFactory.getLogger(KettleInitializer.class);
+
+    // classpath 下打包的插件 zip
+    private static final String PLUGIN_ZIP_CLASSPATH = "kettle-plugins/pdi-core-plugins.zip";
+    // 解压后标记文件，用于判断是否已经解压完成
+    private static final String EXTRACT_MARKER = ".extracted";
+
+    // 解压目标目录，默认放在系统临时目录下；可通过配置覆盖到指定路径
+    @Value("${kettle.plugin.extract-dir:${java.io.tmpdir}/xxl-job-kettle-plugins}")
+    private String extractBaseDir;
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        try {
+            if (!KettleEnvironment.isInitialized()) {
+                log.info(">>>>>> 正在初始化 Kettle 环境...");
+
+                File pluginDir = ensurePluginExtracted();
+
+                if (pluginDir != null) {
+
+                    // 注册 Step 插件
+                    StepPluginType.getInstance()
+                            .getPluginFolders()
+                            .add(new PluginFolder(
+                                    pluginDir.getAbsolutePath(),
+                                    false,
+                                    true
+                            ));
+
+                    // 注册 Job Entry 插件
+                    JobEntryPluginType.getInstance()
+                            .getPluginFolders()
+                            .add(new PluginFolder(
+                                    pluginDir.getAbsolutePath(),
+                                    false,
+                                    true
+                            ));
+
+                    log.info(">>>>>> 已注册 Kettle 插件目录: {}",
+                            pluginDir.getAbsolutePath());
+
+                } else {
+                    log.warn(">>>>>> 未能准备 Kettle 插件目录，部分插件可能无法运行");
+                }
+
+                KettleEnvironment.init();
+                log.info(">>>>>> Kettle 环境初始化完成");
+            }
+        } catch (Exception e) {
+            log.error(">>>>>> Kettle 环境初始化失败", e);
+            throw e;
+        }
+    }
+
+    /**
+     * 确保插件已解压到本地目录，返回解压后 pdi-core-plugins 文件夹路径
+     */
+    private File ensurePluginExtracted() {
+        Path targetDir = Paths.get(extractBaseDir, "pdi-core-plugins");
+        Path markerFile = targetDir.resolve(EXTRACT_MARKER);
+
+        if (Files.exists(markerFile)) {
+            log.info(">>>>>> 检测到 Kettle 插件已解压，直接复用: {}", targetDir);
+            return targetDir.toFile();
+        }
+
+        ClassPathResource resource = new ClassPathResource(PLUGIN_ZIP_CLASSPATH);
+        if (!resource.exists()) {
+            log.error(">>>>>> classpath 下未找到插件包: {}", PLUGIN_ZIP_CLASSPATH);
+            return null;
+        }
+
+        log.info(">>>>>> 首次运行，正在解压 Kettle 插件到: {}", targetDir);
+        try {
+            Files.createDirectories(targetDir);
+            try (InputStream is = resource.getInputStream();
+                 ZipInputStream zis = new ZipInputStream(is)) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    // zip 内部第一层目录就是 pdi-core-plugins/，去掉这一层前缀直接解到 targetDir 下
+                    String entryName = stripLeadingFolder(entry.getName());
+                    if (entryName.isEmpty()) {
+                        continue;
+                    }
+                    Path outPath = targetDir.resolve(entryName).normalize();
+
+                    // 防止 zip slip 攻击：确保解压路径在目标目录内
+                    if (!outPath.startsWith(targetDir)) {
+                        throw new IOException("非法的压缩包条目: " + entry.getName());
+                    }
+
+                    if (entry.isDirectory()) {
+                        Files.createDirectories(outPath);
+                    } else {
+                        Files.createDirectories(outPath.getParent());
+                        Files.copy(zis, outPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    zis.closeEntry();
+                }
+            }
+            // 写入标记文件，表示解压完成
+            Files.createFile(markerFile);
+            log.info(">>>>>> Kettle 插件解压完成: {}", targetDir);
+            return targetDir.toFile();
+        } catch (IOException e) {
+            log.error(">>>>>> 解压 Kettle 插件失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 去掉 zip 条目名里的第一层目录前缀（即压缩包里最外层的 pdi-core-plugins/）
+     */
+    private String stripLeadingFolder(String entryName) {
+        String normalized = entryName.replace('\\', '/');
+        int idx = normalized.indexOf('/');
+        if (idx < 0) {
+            return "";
+        }
+        return normalized.substring(idx + 1);
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/config/MailAccountUtil.java
+================================================
+package com.xxl.job.executor.config;
+
+import cn.hutool.extra.mail.MailAccount;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MailAccountUtil {
+
+    @Value("${etl.mail.host}")
+    private String host;
+
+    @Value("${etl.mail.port}")
+    private int port;
+
+    @Value("${etl.mail.from}")
+    private String from;
+
+    @Value("${etl.mail.user}")
+    private String user;
+
+    @Value("${etl.mail.pass}")
+    private String pass;
+
+    @Value("${etl.mail.ssl-enable:true}")
+    private boolean sslEnable;
+
+    @Value("${etl.mail.starttls-enable:false}")
+    private boolean starttlsEnable;
+
+    // hutool mail account
+    public MailAccount getMailAccount() {
+        return new MailAccount()
+                .setHost(host)
+                .setPort(port)
+                .setAuth(true)                       // 必须开启认证
+                .setFrom(from)                       // 发件人邮箱
+                .setUser(user)                       // 登录用户名（完整邮箱）
+                .setPass(pass)                       // 客户端授权码/密码
+                .setSslEnable(sslEnable)             // 启用 SSL 加密
+                .setStarttlsEnable(starttlsEnable);  // SSL 和 STARTTLS 二选一
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/config/XxlJobConfig.java
+================================================
+package com.xxl.job.executor.config;
+
+import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * xxl-job config
+ *
+ * @author xuxueli 2017-04-28
+ */
+@Configuration
+public class XxlJobConfig {
+    private static final Logger logger = LoggerFactory.getLogger(XxlJobConfig.class);
+
+    @Value("${xxl.job.admin.addresses}")
+    private String adminAddresses;
+
+    @Value("${xxl.job.admin.timeout}")
+    private int timeout;
+
+    @Value("${xxl.job.executor.enabled}")
+    private Boolean enabled;
+
+    @Value("${xxl.job.executor.appname}")
+    private String appname;
+
+    @Value("${xxl.job.executor.accessToken}")
+    private String accessToken;
+
+    @Value("${xxl.job.executor.ip}")
+    private String ip;
+
+    @Value("${xxl.job.executor.port}")
+    private int port;
+
+    @Value("${xxl.job.executor.address}")
+    private String address;
+
+    @Value("${xxl.job.executor.logpath}")
+    private String logPath;
+
+    @Value("${xxl.job.executor.logretentiondays}")
+    private int logRetentionDays;
+
+    @Value("${xxl.job.executor.excludedpackage}")
+    private String excludedPackage;
+
+    @Value("${xxl.job.executor.glueenabled:true}")
+    private Boolean glueEnabled;
+
+
+    @Bean
+    public XxlJobSpringExecutor xxlJobExecutor() {
+        logger.info(">>>>>>>>>>> xxl-job config init.");
+        XxlJobSpringExecutor xxlJobSpringExecutor = new XxlJobSpringExecutor();
+        xxlJobSpringExecutor.setAdminAddresses(adminAddresses);
+        xxlJobSpringExecutor.setTimeout(timeout);
+        xxlJobSpringExecutor.setEnabled(enabled);
+        xxlJobSpringExecutor.setAppname(appname);
+        xxlJobSpringExecutor.setAccessToken(accessToken);
+        xxlJobSpringExecutor.setIp(ip);
+        xxlJobSpringExecutor.setPort(port);
+        xxlJobSpringExecutor.setAddress(address);
+        xxlJobSpringExecutor.setLogPath(logPath);
+        xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
+        xxlJobSpringExecutor.setExcludedPackage(excludedPackage);
+        xxlJobSpringExecutor.setGlueEnabled(glueEnabled);
+
+        return xxlJobSpringExecutor;
+    }
+
+    /**
+     * 针对多网卡、容器内部署等情况，可借助 "spring-cloud-commons" 提供的 "InetUtils" 组件灵活定制注册IP；
+     *
+     *      1、引入依赖：
+     *          <dependency>
+     *             <groupId>org.springframework.cloud</groupId>
+     *             <artifactId>spring-cloud-commons</artifactId>
+     *             <version>${version}</version>
+     *         </dependency>
+     *
+     *      2、配置文件，或者容器启动变量
+     *          spring.cloud.inetutils.preferred-networks: 'xxx.xxx.xxx.'
+     *
+     *      3、获取IP
+     *          String ip_ = inetUtils.findFirstNonLoopbackHostInfo().getIpAddress();
+     */
+
+
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/jobhandler/EtlJobHandler.java
+================================================
+package com.xxl.job.executor.jobhandler;
+
+import com.xxl.job.core.context.XxlJobContext;
+import com.xxl.job.core.context.XxlJobHelper;
+import com.xxl.job.core.handler.annotation.XxlJob;
+import com.xxl.job.executor.service.HopExecutorService;
+import com.xxl.job.executor.service.KettleExecutorService;
+import com.xxl.job.executor.service.PythonExecutorService;
+import com.xxl.job.executor.service.ScriptArtifactService;
+import jakarta.annotation.Resource;
+import org.springframework.stereotype.Component;
+
+import java.nio.file.Path;
+
+/**
+ * Kettle / Hop XXL-JOB 执行器 Handler
+ */
+@Component
+public class EtlJobHandler {
+
+    @Resource
+    private KettleExecutorService kettleExecutorService;
+    @Resource
+    private HopExecutorService hopExecutorService;
+    @Resource
+    private ScriptArtifactService scriptArtifactService;
+    @Resource
+    private PythonExecutorService pythonExecutorService;
+
+    /**
+     * 1. 执行 Kettle Job (.kjb)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: kettleJobHandler
+     * 任务参数填入: .kjb 文件的绝对路径 (如: /data/kettle/jobs/test.kjb)
+     */
+    @XxlJob("kettleJobHandler")
+    public void executeJob() {
+        String jobPath = XxlJobHelper.getJobParam();
+        if (jobPath == null || jobPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Job 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            kettleExecutorService.runJob(resolveScript(jobPath, "KJB"));
+            XxlJobHelper.handleSuccess("Kettle Job 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Kettle Job 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 2. 执行 Kettle Trans (.ktr)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: kettleTransHandler
+     * 任务参数填入: .ktr 文件的绝对路径 (如: /data/kettle/trans/test.ktr)
+     */
+    @XxlJob("kettleTransHandler")
+    public void executeTrans() {
+        String ktrPath = XxlJobHelper.getJobParam();
+        if (ktrPath == null || ktrPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Trans 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            kettleExecutorService.runKtr(resolveScript(ktrPath, "KTR"));
+            XxlJobHelper.handleSuccess("Kettle Trans 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Kettle Trans 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 3. 执行 Hop Pipeline (.hpl)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: hopPipelineHandler
+     * 任务参数填入: .hpl 文件的绝对路径，或 scriptId=123
+     */
+    @XxlJob("hopPipelineHandler")
+    public void executePipeline() {
+        String pipelinePath = XxlJobHelper.getJobParam();
+        if (pipelinePath == null || pipelinePath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Pipeline 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            hopExecutorService.runPipeline(resolveScript(pipelinePath, "HPL"));
+            XxlJobHelper.handleSuccess("Hop Pipeline 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Hop Pipeline 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 4. 执行 Hop Workflow (.hwf)
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: hopWorkflowHandler
+     * 任务参数填入: .hwf 文件的绝对路径，或 scriptId=123
+     */
+    @XxlJob("hopWorkflowHandler")
+    public void executeWorkflow() {
+        String workflowPath = XxlJobHelper.getJobParam();
+        if (workflowPath == null || workflowPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Workflow 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            hopExecutorService.runWorkflow(resolveScript(workflowPath, "HWF"));
+            XxlJobHelper.handleSuccess("Hop Workflow 执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Hop Workflow 执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 5. 执行 Python 脚本
+     * 在 XXL-JOB 调度中心配置 JobHandler 名称为: pythonJobHandler
+     * 任务参数填入: scriptId=123（推荐），或 .py 文件的绝对路径（兼容旧任务）
+     */
+    @XxlJob("pythonJobHandler")
+    public void executePython() {
+        String pyPath = XxlJobHelper.getJobParam();
+        if (pyPath == null || pyPath.trim().isEmpty()) {
+            XxlJobHelper.handleFail("参数错误：Python 脚本路径不能为空！");
+            return;
+        }
+
+        try {
+            String resolved = resolveScript(pyPath, "PY");
+            pythonExecutorService.runScript(
+                    resolved,
+                    String.valueOf(XxlJobContext.getXxlJobContext().getShardIndex()),
+                    String.valueOf(XxlJobContext.getXxlJobContext().getShardTotal())
+            );
+            XxlJobHelper.handleSuccess("Python 脚本执行完毕！");
+        } catch (Exception e) {
+            XxlJobHelper.handleFail("Python 脚本执行异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Preferred parameter: scriptId=123. A legacy absolute path is retained only for existing jobs.
+     */
+    private String resolveScript(String parameter, String subtype) throws Exception {
+        String value = parameter.trim();
+        if (value.startsWith("scriptId=")) {
+            int scriptId = Integer.parseInt(value.substring("scriptId=".length()).trim());
+            Path localFile = scriptArtifactService.resolve(scriptId, subtype);
+            XxlJobHelper.log(">>>>>> 已同步脚本目录，入口脚本 {} -> {}", scriptId, localFile);
+            return localFile.toString();
+        }
+        return value;
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/service/EtlAlarmService.java
+================================================
+package com.xxl.job.executor.service;
+
+import cn.hutool.extra.mail.MailAccount;
+import cn.hutool.extra.mail.MailUtil;
+import com.xxl.job.executor.config.MailAccountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * ETL 告警邮件服务
+ */
+@Service
+public class EtlAlarmService {
+    private static final Logger log = LoggerFactory.getLogger(EtlAlarmService.class);
+    private static final String ALARM_RECIPIENT = "Simon_Cao@pmpgc.com";
+
+    @Autowired
+    private MailAccountUtil mailAccountUtil;
+
+    /**
+     * 构建基本信息 Map
+     */
+    public Map<String, String> getMailBasicInfo(String filePath) {
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("文件路径", filePath);
+        return details;
+    }
+
+    /**
+     * 异步发送 HTML 报警邮件
+     */
+    @Async
+    public void sendAlarmMail(String subject, String title, Map<String, String> details, String logText) {
+        try {
+            StringBuilder content = new StringBuilder();
+            content.append("<h2>").append(title).append("</h2>");
+
+            if (details != null) {
+                for (Map.Entry<String, String> entry : details.entrySet()) {
+                    content.append("<p><strong>").append(entry.getKey()).append("：</strong>")
+                            .append(entry.getValue()).append("</p>");
+                }
+            }
+
+            content.append("<hr/>");
+            content.append("<h3>运行日志详情：</h3>");
+            content.append("<pre style='background-color:#ffebeb; color:#a30000; padding:10px; overflow-x:auto;'>")
+                    .append(logText)
+                    .append("</pre>");
+
+            MailAccount mailAccount = mailAccountUtil.getMailAccount();
+            MailUtil.send(mailAccount, ALARM_RECIPIENT, subject, content.toString(), true);
+            log.info("告警邮件发送成功，接收人: {}", ALARM_RECIPIENT);
+        } catch (Exception e) {
+            log.error("告警邮件发送失败: {}", e.getMessage(), e);
+        }
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/service/HopExecutorService.java
+================================================
+package com.xxl.job.executor.service;
+
+import com.xxl.job.core.context.XxlJobHelper;
+import org.apache.hop.core.Result;
+import org.apache.hop.core.encryption.HopTwoWayPasswordEncoder;
+import org.apache.hop.core.logging.HopLogStore;
+import org.apache.hop.core.logging.ILoggingObject;
+import org.apache.hop.core.logging.LogLevel;
+import org.apache.hop.core.logging.LoggingRegistry;
+import org.apache.hop.core.variables.IVariables;
+import org.apache.hop.core.variables.Variables;
+import org.apache.hop.metadata.api.IHopMetadataProvider;
+import org.apache.hop.metadata.serializer.json.JsonMetadataProvider;
+import org.apache.hop.pipeline.PipelineMeta;
+import org.apache.hop.pipeline.engines.local.LocalPipelineEngine;
+import org.apache.hop.workflow.WorkflowMeta;
+import org.apache.hop.workflow.engine.IWorkflowEngine;
+import org.apache.hop.workflow.engines.local.LocalWorkflowEngine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+@Service
+public class HopExecutorService {
+    private static final Logger log = LoggerFactory.getLogger(HopExecutorService.class);
+
+    private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
+
+    @Value("${hop.metadata.base-folders}")
+    private String metadataFolder;
+
+    /**
+     * 执行 Hop Pipeline (.hpl)
+     */
+    public void runPipeline(String pipelinePath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+
+        XxlJobHelper.log(">>>>>> 开始执行 Hop Pipeline: {}", pipelinePath);
+
+        LocalPipelineEngine pipeline = null;
+        String logChannelId = null;
+        try {
+            IVariables variables = Variables.getADefaultVariableSpace();
+            IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
+            PipelineMeta pipelineMeta = new PipelineMeta(pipelinePath, metadataProvider, variables);
+
+            pipeline = new LocalPipelineEngine(pipelineMeta);
+            pipeline.setMetadataProvider(metadataProvider);
+            pipeline.initializeFrom(variables);
+            pipeline.setLogLevel(LOG_LEVEL);
+
+            logChannelId = pipeline.getLogChannelId();
+            pipeline.prepareExecution();
+            pipeline.startThreads();
+            pipeline.waitUntilFinished();
+
+            Result result = pipeline.getResult();
+            // 获取日志并输出
+            String hopLogText = getHopLog(pipeline);
+            XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
+
+            if (result.getNrErrors() > 0) {
+                throw new RuntimeException("Hop [Pipeline] 执行失败，错误数: " + result.getNrErrors() + "，路径: " + pipelinePath);
+            } else {
+                XxlJobHelper.log(">>>>>> Hop Pipeline 执行成功: {}", pipelinePath);
+            }
+        } catch (Exception e) {
+            log.error("执行 Hop Pipeline [{}] 抛出异常: {}", pipelinePath, e.getMessage(), e);
+            throw e;
+        } finally {
+            // 1. 释放 Pipeline 内部算子和行集资源
+            if (pipeline != null) {
+                try {
+                    pipeline.cleanup();
+                } catch (Throwable t) {
+                    log.warn("释放 Hop Pipeline 资源异常（已忽略）: {}", t.getMessage());
+                }
+            }
+            // 2. 清理日志内容缓存 + 注销全局 LoggingRegistry 引用（防止内存与ClassLoader泄漏）
+            if (logChannelId != null) {
+                try {
+                    HopLogStore.discardLines(logChannelId, true);
+                    LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+                } catch (Throwable t) {
+                    log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
+                }
+            }
+            // 3. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    /**
+     * 执行 Hop Workflow (.hwf)
+     */
+    public void runWorkflow(String workflowPath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+
+        XxlJobHelper.log(">>>>>> 开始执行 Hop Workflow: {}", workflowPath);
+
+        IWorkflowEngine<WorkflowMeta> workflow = null;
+        String logChannelId = null;
+        try {
+            IVariables variables = Variables.getADefaultVariableSpace();
+            IHopMetadataProvider metadataProvider = buildMetadataProvider(variables);
+
+            WorkflowMeta workflowMeta = new WorkflowMeta(variables, workflowPath, metadataProvider);
+
+            workflow = new LocalWorkflowEngine(workflowMeta);
+            workflow.setMetadataProvider(metadataProvider);
+            workflow.initializeFrom(variables);
+            workflow.setLogLevel(LOG_LEVEL);
+
+            logChannelId = workflow.getLogChannelId();
+            Result result = workflow.startExecution();
+
+            // 获取日志并输出
+            String hopLogText = getHopLog(workflow);
+            XxlJobHelper.log("Hop 运行日志:\n{}", hopLogText);
+
+            if (result.getNrErrors() > 0) {
+                throw new RuntimeException("Hop [Workflow] 执行失败，错误数: " + result.getNrErrors() + "，路径: " + workflowPath);
+            } else {
+                XxlJobHelper.log(">>>>>> Hop Workflow 执行成功: {}", workflowPath);
+            }
+        } catch (Exception e) {
+            log.error("执行 Hop Workflow [{}] 抛出异常: {}", workflowPath, e.getMessage(), e);
+            throw e;
+        } finally {
+            // 1. Workflow 核心清理：清除日志通道缓存 + 注销全局 LoggingRegistry 引用
+            if (logChannelId != null) {
+                try {
+                    HopLogStore.discardLines(logChannelId, true);
+                    LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+                } catch (Throwable t) {
+                    log.warn("清除 Hop LogChannel 缓存失败（已忽略）: {}", t.getMessage());
+                }
+            }
+            // 2. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    private IHopMetadataProvider buildMetadataProvider(IVariables variables) {
+        return new JsonMetadataProvider(
+                new HopTwoWayPasswordEncoder(),
+                metadataFolder,
+                variables
+        );
+    }
+
+    private String getHopLog(ILoggingObject loggingObject) {
+        if (loggingObject == null) {
+            return "";
+        }
+        String logChannelId = loggingObject.getLogChannelId();
+        return HopLogStore.getAppender().getBuffer(logChannelId, false).toString();
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/service/KettleExecutorService.java
+================================================
+package com.xxl.job.executor.service;
+
+import com.xxl.job.core.context.XxlJobHelper;
+import org.pentaho.di.core.logging.KettleLogStore;
+import org.pentaho.di.core.logging.LogLevel;
+import org.pentaho.di.core.logging.LoggingObjectInterface;
+import org.pentaho.di.core.logging.LoggingRegistry;
+import org.pentaho.di.job.Job;
+import org.pentaho.di.job.JobMeta;
+import org.pentaho.di.trans.Trans;
+import org.pentaho.di.trans.TransMeta;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+/**
+ * Kettle 核心脚本执行服务 (加固版: 深度资源释放与防泄漏)
+ */
+@Service
+public class KettleExecutorService {
+    private static final Logger log = LoggerFactory.getLogger(KettleExecutorService.class);
+
+    private static final LogLevel LOG_LEVEL = LogLevel.BASIC;
+
+    // @Resource
+    // private EtlAlarmService etlAlarmService;
+
+    /**
+     * 执行 Kettle Job (.kjb)
+     */
+    public void runJob(String jobPath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+
+        XxlJobHelper.log(">>>>>> 开始执行 Kettle Job: {}", jobPath);
+        Job job = null;
+        String logChannelId = null;
+        try {
+            JobMeta jobMeta = new JobMeta(jobPath, null);
+            job = new Job(null, jobMeta);
+            logChannelId = job.getLogChannelId(); // 记录 Channel ID
+            job.setLogLevel(LOG_LEVEL);
+            job.setGatheringMetrics(false);
+
+            job.start();
+            job.waitUntilFinished();
+
+            String kettleLogText = getKettleLog(job);
+            XxlJobHelper.log("Kettle 运行日志:\n{}", kettleLogText);
+
+            if (job.getErrors() > 0) {
+                throw new RuntimeException("Kettle [Job] 执行失败，错误数: " + job.getErrors() + "，路径: " + jobPath);
+            } else {
+                XxlJobHelper.log(">>>>>> Kettle Job 执行成功: {}", jobPath);
+            }
+        } catch (Exception e) {
+            log.error("执行 Kettle Job [{}] 抛出异常: {}", jobPath, e.getMessage(), e);
+            throw e;
+        } finally {
+            // 1. 释放 Job 相关资源
+            if (job != null) {
+                job.eraseParameters(); // 清空参数
+            }
+            // 2. 彻底清理日志缓存与全局注册表 (断开 GC Root 引用)
+            if (logChannelId != null) {
+                KettleLogStore.discardLines(logChannelId, true);
+                LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+            }
+            // 3. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    /**
+     * 执行 Kettle Trans (.ktr)
+     */
+    public void runKtr(String ktrPath) throws Exception {
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+
+        XxlJobHelper.log(">>>>>> 开始执行 Kettle Trans: {}", ktrPath);
+        Trans trans = null;
+        String logChannelId = null;
+        try {
+            TransMeta transMeta = new TransMeta(ktrPath);
+            trans = new Trans(transMeta);
+            logChannelId = trans.getLogChannelId(); // 记录 Channel ID
+            trans.setLogLevel(LOG_LEVEL);
+            trans.setGatheringMetrics(false);
+
+            trans.execute(null);
+            trans.waitUntilFinished();
+
+            String kettleLogText = getKettleLog(trans);
+            XxlJobHelper.log("Kettle 运行日志:\n{}", kettleLogText);
+
+            if (trans.getErrors() > 0) {
+                throw new RuntimeException("Kettle [Trans] 执行失败，错误数: " + trans.getErrors() + "，路径: " + ktrPath);
+            } else {
+                XxlJobHelper.log(">>>>>> Kettle Trans 执行成功: {}", ktrPath);
+            }
+        } catch (Exception e) {
+            log.error("执行 Kettle Ktr [{}] 抛出异常: {}", ktrPath, e.getMessage(), e);
+            throw e;
+        } finally {
+            // 1. 释放 Trans 步骤与内部连接资源
+            if (trans != null) {
+                trans.cleanup();
+                trans.eraseParameters();
+            }
+            // 2. 彻底清理日志缓存与全局注册表 (断开 GC Root 引用)
+            if (logChannelId != null) {
+                KettleLogStore.discardLines(logChannelId, true);
+                LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+            }
+            // 3. 还原线程上下文类加载器
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    /**
+     * 获取 Kettle 内存缓冲区中的运行日志
+     */
+    private String getKettleLog(LoggingObjectInterface loggingObject) {
+        if (loggingObject == null) return "";
+        String logChannelId = loggingObject.getLogChannelId();
+        return KettleLogStore.getAppender().getBuffer(logChannelId, false).toString();
+    }
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/service/PythonExecutorService.java
+================================================
+package com.xxl.job.executor.service;
+
+import com.xxl.job.core.context.XxlJobHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Python 脚本执行服务
+ * <p>
+ * 使用独立部署的解释器（不在 /usr/xxl-job 备份范围内，见 python.interpreter-path），
+ * 通过 ProcessBuilder 调用，实时回显日志到 XxlJobHelper。
+ */
+@Service
+public class PythonExecutorService {
+    private static final Logger log = LoggerFactory.getLogger(PythonExecutorService.class);
+
+    @Value("${python.interpreter-path}")
+    private String interpreterPath;
+
+    @Value("${python.script-timeout-seconds}")
+    private long timeoutSeconds;
+
+    /**
+     * 执行 python 脚本
+     *
+     * @param scriptPath .py 绝对路径
+     * @param scriptArgs 脚本参数（如分片序号、分片总数）
+     */
+    public void runScript(String scriptPath, String... scriptArgs) throws Exception {
+
+        // valid interpreter
+        File interpreter = new File(interpreterPath);
+        if (!interpreter.isFile()) {
+            throw new IllegalStateException("Python 解释器不存在: " + interpreterPath);
+        }
+        File scriptFile = new File(scriptPath);
+        if (!scriptFile.isFile()) {
+            throw new IllegalStateException("Python 脚本不存在: " + scriptPath);
+        }
+
+        // build command
+        List<String> command = new ArrayList<>();
+        command.add(interpreterPath);
+        command.add(scriptPath);
+        if (scriptArgs != null) {
+            command.addAll(Arrays.asList(scriptArgs));
+        }
+
+        XxlJobHelper.log(">>>>>> 开始执行 Python 脚本: {}, interpreter: {}", scriptPath, interpreterPath);
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);                        // stdout/stderr 合并，避免顺序错乱
+        pb.directory(scriptFile.getParentFile());            // 工作目录设为脚本所在目录，便于脚本内相对路径引用同目录资源
+        pb.environment().put("PYTHONIOENCODING", "UTF-8");   // 避免中文输出在部分环境下乱码/异常
+        pb.environment().put("PYTHONUNBUFFERED", "1");       // 关闭输出缓冲，保证日志实时性
+
+        Process process = null;
+        Thread readerThread = null;
+        try {
+            process = pb.start();
+            Process finalProcess = process;
+
+            // 实时读取输出并写入 XxlJobHelper 日志文件
+            readerThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(finalProcess.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        XxlJobHelper.log(line);
+                    }
+                } catch (IOException e) {
+                    // process 被销毁时读取流可能抛出异常，属预期情况，仅记录不上抛
+                    log.debug("Python 脚本输出流读取结束: {}", e.getMessage());
+                }
+            });
+            readerThread.setName("xxl-job, PythonExecutorService-stdout-reader");
+            readerThread.start();
+
+            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+
+            if (!finished) {
+                destroyProcessTree(process);
+                // 尽量让日志读取线程收尾
+                readerThread.join(5000);
+                throw new RuntimeException("Python 脚本执行超时(" + timeoutSeconds + "s)，路径: " + scriptPath);
+            }
+
+            // 等待输出读取线程收尾，避免日志截断
+            readerThread.join(5000);
+
+            int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                throw new RuntimeException("Python 脚本执行失败，exitCode=" + exitCode + "，路径: " + scriptPath);
+            }
+            XxlJobHelper.log(">>>>>> Python 脚本执行成功: {}", scriptPath);
+        } catch (Exception e) {
+            log.error("执行 Python 脚本 [{}] 抛出异常: {}", scriptPath, e.getMessage(), e);
+            throw e;
+        } finally {
+            destroyProcessTree(process); // 替换原 process.destroyForcibly() 块
+            if (readerThread != null && readerThread.isAlive()) {
+                readerThread.interrupt();
+            }
+        }
+    }
+
+    // ================== 递归销毁整棵进程树（JDK 9+） ==================
+    private void destroyProcessTree(Process process) {
+        if (process == null || !process.isAlive()) {
+            return;
+        }
+        try {
+            // 1. 优先递归强杀所有派生的子进程（如 multiprocessing、subprocess 生成的子进程）
+            process.descendants().forEach(ProcessHandle::destroyForcibly);
+        } catch (Exception e) {
+            log.warn("清理 Python 衍生子进程树异常: {}", e.getMessage());
+        } finally {
+            // 2. 强杀主进程并等待回收
+            process.destroyForcibly();
+            try {
+                process.waitFor(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+}
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/java/com/xxl/job/executor/service/ScriptArtifactService.java
+================================================
+package com.xxl.job.executor.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.InputStream;
+import java.nio.file.*;
+import java.security.MessageDigest;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Syncs published script directories from xxl-job-admin to an executor-local cache.
+ * Kettle kjb files reference sibling ktr files via ${Internal.Entry.Current.Directory},
+ * so the whole directory is synced instead of a single file.
+ */
+@Service
+public class ScriptArtifactService {
+    @Value("${xxl.job.admin.addresses}")
+    private String adminAddresses;
+    @Value("${xxl.job.file.api-token:}")
+    private String apiToken;
+    @Value("${xxl.job.executor.script-cache-path:${java.io.tmpdir}/xxl-job-script-cache}")
+    private String cachePath;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public Path resolve(int scriptId, String requiredSubtype) throws Exception {
+        if (apiToken == null || apiToken.isBlank()) throw new IllegalStateException("xxl.job.file.api-token 未配置");
+        BundleManifest manifest = fetchBundle(scriptId);
+        if (!requiredSubtype.equalsIgnoreCase(manifest.entrySubtype))
+            throw new IllegalArgumentException("脚本类型不匹配，需要 " + requiredSubtype);
+        syncDirectory(manifest);
+        Path entry = cacheRoot().resolve(manifest.entryRelativePath.replace('\\', '/')).normalize();
+        if (!entry.startsWith(cacheRoot()) || !Files.isRegularFile(entry))
+            throw new IllegalStateException("脚本缓存不可用");
+        return entry;
+    }
+
+    private BundleManifest fetchBundle(int scriptId) throws Exception {
+        Map<?, ?> root = exchangeJson("/scriptfile/api/" + scriptId + "/bundle");
+        if (!(root.get("code") instanceof Number) || ((Number) root.get("code")).intValue() != 200)
+            throw new IllegalStateException("脚本不可用");
+        Map<?, ?> data = (Map<?, ?>) root.get("data");
+        if (data == null) throw new IllegalStateException("脚本不可用");
+        BundleManifest manifest = new BundleManifest();
+        manifest.entryScriptId = scriptId;
+        manifest.entryRelativePath = String.valueOf(data.get("entryRelativePath")).replace('\\', '/');
+        Object files = data.get("files");
+        if (!(files instanceof List<?> fileList) || fileList.isEmpty())
+            throw new IllegalStateException("脚本目录为空");
+        for (Object item : fileList) {
+            if (!(item instanceof Map<?, ?> file)) continue;
+            ScriptFileEntry entry = new ScriptFileEntry();
+            entry.id = ((Number) file.get("id")).intValue();
+            entry.relativePath = String.valueOf(file.get("relativePath")).replace('\\', '/');
+            entry.sha256 = String.valueOf(file.get("sha256"));
+            entry.scriptSubtype = String.valueOf(file.get("scriptSubtype"));
+            manifest.files.add(entry);
+            if (entry.id == scriptId) manifest.entrySubtype = entry.scriptSubtype;
+        }
+        if (manifest.entrySubtype == null) throw new IllegalStateException("脚本不可用");
+        return manifest;
+    }
+
+    private void syncDirectory(BundleManifest manifest) throws Exception {
+        for (ScriptFileEntry file : manifest.files) ensureCached(file);
+    }
+
+    private void ensureCached(ScriptFileEntry file) throws Exception {
+        Path cache = cacheRoot().resolve(file.relativePath).normalize();
+        if (!cache.startsWith(cacheRoot())) throw new IllegalArgumentException("非法缓存路径");
+        if (Files.isRegularFile(cache) && file.sha256.equalsIgnoreCase(sha256(cache))) return;
+        Files.createDirectories(cache.getParent());
+        Path temporary = Files.createTempFile(cache.getParent(), "download-", ".tmp");
+        try {
+            ResponseEntity<byte[]> download = restTemplate.exchange(
+                    adminBase() + "/scriptfile/api/" + file.id + "/download",
+                    HttpMethod.GET,
+                    new HttpEntity<>(authHeaders()),
+                    byte[].class);
+            if (!download.getStatusCode().is2xxSuccessful() || download.getBody() == null)
+                throw new IllegalStateException("下载脚本失败: " + file.relativePath);
+            Files.write(temporary, download.getBody(), StandardOpenOption.TRUNCATE_EXISTING);
+            if (!file.sha256.equalsIgnoreCase(sha256(temporary)))
+                throw new IllegalStateException("脚本校验失败: " + file.relativePath);
+            try {
+                Files.move(temporary, cache, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temporary, cache, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
+    private Map<?, ?> exchangeJson(String path) throws Exception {
+        ResponseEntity<String> response = restTemplate.exchange(
+                adminBase() + path,
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders()),
+                String.class);
+        return objectMapper.readValue(response.getBody(), Map.class);
+    }
+
+    private HttpHeaders authHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-XXL-JOB-FILE-TOKEN", apiToken);
+        return headers;
+    }
+
+    private String adminBase() {
+        return adminAddresses.split(",")[0].replaceAll("/+$", "");
+    }
+
+    private Path cacheRoot() {
+        return Paths.get(cachePath).toAbsolutePath().normalize();
+    }
+
+    private static String sha256(Path file) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        try (InputStream in = Files.newInputStream(file)) {
+            byte[] b = new byte[8192];
+            for (int n; (n = in.read(b)) > 0; ) md.update(b, 0, n);
+        }
+        StringBuilder out = new StringBuilder();
+        for (byte b : md.digest()) out.append(String.format("%02x", b));
+        return out.toString();
+    }
+
+    private static final class BundleManifest {
+        private int entryScriptId;
+        private String entryRelativePath;
+        private String entrySubtype;
+        private final java.util.ArrayList<ScriptFileEntry> files = new java.util.ArrayList<>();
+    }
+
+    private static final class ScriptFileEntry {
+        private int id;
+        private String relativePath;
+        private String sha256;
+        private String scriptSubtype;
+    }
+}
+
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/application.properties.template
+================================================
+# web port
+server.port=8081
+# no web
+#spring.main.web-environment=false
+
+# log config
+logging.config=classpath:logback.xml
+
+
+### xxl-job admin address list, such as "http://address" or "http://address01,http://address02"
+xxl.job.admin.addresses=http://127.0.0.1:8080
+### xxl-job timeout by second, default 3s
+xxl.job.admin.timeout=3
+
+### xxl-job executor enable, default true
+xxl.job.executor.enabled=true
+### xxl-job executor appname
+xxl.job.executor.appname=xxl-job-executor-etl
+### xxl-job executor access token
+xxl.job.executor.accessToken=default_token
+### xxl-job executor ip: used for register, will get from network if empty
+xxl.job.executor.ip=
+### xxl-job executor port: used for register, will attempt to generate automatically if empty
+xxl.job.executor.port=9996
+### xxl-job executor address: preferred used for register, will use ip:port if empty
+xxl.job.executor.address=
+### xxl-job executor log-path
+xxl.job.executor.logpath=/data/applogs/xxl-job/jobhandler
+### xxl-job executor log-retention-days
+xxl.job.executor.logretentiondays=30
+### xxl-job executor excluded package, will skip scan job. such as "org.package01" or "org.package01,org.package02"
+xxl.job.executor.excludedpackage=
+### xxl-job executor glue (non-BEAN) task enable, default true
+xxl.job.executor.glueenabled=true
+
+### Script repository client. Must match xxl-job-admin xxl.job.file.api-token.
+xxl.job.file.api-token=YOUR_API_TOKEN
+xxl.job.executor.script-cache-path=/usr/xxl-job/logs/script-cache
+
+### Hop
+hop.plugin.base-folders=/usr/xxl-job/hop-plugins
+hop.metadata.base-folders=/usr/xxl-job/data/script-repository/hop/metadata
+
+### Python (独立部署，不在 /usr/xxl-job 备份范围内)
+### 本地 Windows 开发时，通过环境变量 PYTHON_INTERPRETER_PATH 覆盖此默认值
+python.interpreter-path=${PYTHON_INTERPRETER_PATH:/data/xxl-job-python/venvs/default/bin/python3}
+python.script-timeout-seconds=${PYTHON_SCRIPT_TIMEOUT_SECONDS:43200}
+
+
+### ---------------- target 报表库（唯一 Spring 数据源，MyBatis 直连） ----------------
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url=jdbc:mysql://172.18.28.1:3306/pmcdwraw?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+spring.datasource.username=user
+spring.datasource.password=123456
+
+spring.datasource.initial-size=5
+spring.datasource.min-idle=5
+spring.datasource.max-active=20
+spring.datasource.max-wait=10000
+spring.datasource.validation-query=SELECT 1
+spring.datasource.test-while-idle=true
+spring.datasource.test-on-borrow=false
+spring.datasource.test-on-return=false
+
+### mybatis
+mybatis.mapper-locations=classpath:/mapper/**/*Mapper.xml
+mybatis.type-aliases-package=com.xxl.job.executor.cdc.model
+
+### ---------------- CDC 源库列表（SQL Server 2008，配置极少改动，直接写文件） ----------------
+# 每新增一个站点，追加一组 etl.cdc.sources[N].* 即可，无需改代码/重新打包
+etl.cdc.sources[0].id=szbp
+etl.cdc.sources[0].jdbc-url=jdbc:sqlserver://172.16.53.1:1433;databaseName=SZBPERPRUN;encrypt=false
+etl.cdc.sources[0].username=sa
+etl.cdc.sources[0].password=123456
+etl.cdc.sources[0].enabled=true
+etl.cdc.sources[0].prod=true
+
+etl.cdc.sources[1].id=tcbp
+etl.cdc.sources[1].jdbc-url=jdbc:sqlserver://172.16.53.2:1433;databaseName=tcbperprun;encrypt=false
+etl.cdc.sources[1].username=sa
+etl.cdc.sources[1].password=123456
+etl.cdc.sources[1].enabled=true
+etl.cdc.sources[1].prod=true
+
+etl.cdc.sources[2].id=csbp
+etl.cdc.sources[2].jdbc-url=jdbc:sqlserver://172.16.53.3:1433;databaseName=csbperprun;encrypt=false
+etl.cdc.sources[2].username=sa
+etl.cdc.sources[2].password=123456
+etl.cdc.sources[2].enabled=true
+etl.cdc.sources[2].prod=true
+
+### 源库连接池参数（对所有 source 生效，单独放一组更省配置行数）
+etl.cdc.pool.initial-size=1
+etl.cdc.pool.min-idle=1
+etl.cdc.pool.max-active=3
+etl.cdc.pool.max-wait=5000
+etl.cdc.pool.validation-query=SELECT 1
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/kettle-password-encoder-plugins.xml
+================================================
+<password-encoder-plugins>
+
+  <password-encoder-plugin id="Kettle">
+    <description>Kettle Password Encoder</description>
+    <classname>org.pentaho.support.encryption.KettleTwoWayPasswordEncoder</classname>
+  </password-encoder-plugin>
+  <!--
+  <password-encoder-plugin id="AES">
+    <description>AES Password Encoder</description>
+    <classname>org.pentaho.support.encryption.AESTwoWayPasswordEncoder</classname>
+    <default-encoder>true</default-encoder>
+  </password-encoder-plugin>
+  -->
+
+</password-encoder-plugins>
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/logback.xml
+================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false" scan="true" scanPeriod="1 seconds">
+
+    <contextName>logback</contextName>
+    <property name="log.path" value="${LOG_HOME:-/data/applogs}/xxl-job/xxl-job-executor-etl.log" />
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${log.path}.%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="console"/>
+        <!--<appender-ref ref="file"/>-->
+    </root>
+
+</configuration>
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/mapper/ProdOrdHrdMapper.xml
+================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.executor.cdc.mapper.ProdOrdHdrMapper">
+
+    <insert id="upsertBatch" parameterType="java.util.List">
+        INSERT INTO t_prodordhdr (
+        BP,
+        F_ID,
+        F_DOCDATE,
+        F_DOCTIME,
+        F_DUEDATE,
+        F_SALESID,
+        F_ITEMID,
+        F_PARTID,
+        F_DOCQTY,
+        F_DUEQTY,
+        F_SHEETQTY,
+        F_RESQTY,
+        F_FREEQTY,
+        F_PAPERWID,
+        F_SHEETLEN,
+        F_SHEETWID,
+        F_LCUT,
+        F_WCUT,
+        F_JOINSHEET,
+        F_EDITBY,
+        F_CONFBY,
+        F_ISCONF,
+        F_ISCLOSE,
+        F_CLOSETYPE,
+        F_CLOSEDATE,
+        F_RMRK,
+        F_UNITAREA,
+        F_ISOUT,
+        F_UPCUT,
+        F_LOWCUT,
+        F_UPWID,
+        F_LOWWID,
+        F_PAPER,
+        F_FLUTEID,
+        F_BIANLIAO,
+        F_BUSHU,
+        F_BUSHUREASON,
+        F_BPINV,
+        F_TRANSPORTEDTIME,
+        F_BOARDAREA,
+        F_LAYERTYPE,
+        F_ScoreType,
+        F_BIANLIAOPRODID,
+        F_BIANLIAOCOUNT,
+        F_TechFlowID,
+        F_RMRK_CONVERTPROD,
+        F_PRODIDBYINVSET,
+        F_FeiLiao,
+        F_ReWork,
+        F_ReWorkProdID,
+        F_ExceedProdID,
+        F_DIENUM,
+        F_CreatedBY,
+        F_TECHFLOWMAINID,
+        F_ScoreIsControledByMinVal,
+        F_WIPLen,
+        F_WIPWidth,
+        F_FLOWID,
+        F_IsBPCorrugatorAccepted,
+        F_BPCorrugatorAcceptBy,
+        F_BPCorrugatorUploaded,
+        F_dataSource,
+        f_updateTime
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.BP},
+            #{item.F_ID},
+            #{item.F_DOCDATE},
+            #{item.F_DOCTIME},
+            #{item.F_DUEDATE},
+            #{item.F_SALESID},
+            #{item.F_ITEMID},
+            #{item.F_PARTID},
+            #{item.F_DOCQTY},
+            #{item.F_DUEQTY},
+            #{item.F_SHEETQTY},
+            #{item.F_RESQTY},
+            #{item.F_FREEQTY},
+            #{item.F_PAPERWID},
+            #{item.F_SHEETLEN},
+            #{item.F_SHEETWID},
+            #{item.F_LCUT},
+            #{item.F_WCUT},
+            #{item.F_JOINSHEET},
+            #{item.F_EDITBY},
+            #{item.F_CONFBY},
+            #{item.F_ISCONF},
+            #{item.F_ISCLOSE},
+            #{item.F_CLOSETYPE},
+            #{item.F_CLOSEDATE},
+            #{item.F_RMRK},
+            #{item.F_UNITAREA},
+            #{item.F_ISOUT},
+            #{item.F_UPCUT},
+            #{item.F_LOWCUT},
+            #{item.F_UPWID},
+            #{item.F_LOWWID},
+            #{item.F_PAPER},
+            #{item.F_FLUTEID},
+            #{item.F_BIANLIAO},
+            #{item.F_BUSHU},
+            #{item.F_BUSHUREASON},
+            #{item.F_BPINV},
+            #{item.F_TRANSPORTEDTIME},
+            #{item.F_BOARDAREA},
+            #{item.F_LAYERTYPE},
+            #{item.F_ScoreType},
+            #{item.F_BIANLIAOPRODID},
+            #{item.F_BIANLIAOCOUNT},
+            #{item.F_TechFlowID},
+            #{item.F_RMRK_CONVERTPROD},
+            #{item.F_PRODIDBYINVSET},
+            #{item.F_FeiLiao},
+            #{item.F_ReWork},
+            #{item.F_ReWorkProdID},
+            #{item.F_ExceedProdID},
+            #{item.F_DIENUM},
+            #{item.F_CreatedBY},
+            #{item.F_TECHFLOWMAINID},
+            #{item.F_ScoreIsControledByMinVal},
+            #{item.F_WIPLen},
+            #{item.F_WIPWidth},
+            #{item.F_FLOWID},
+            #{item.F_IsBPCorrugatorAccepted},
+            #{item.F_BPCorrugatorAcceptBy},
+            #{item.F_BPCorrugatorUploaded},
+            #{item.F_dataSource},
+            #{item.f_updateTime}
+            )
+        </foreach>
+        AS new_data
+        ON DUPLICATE KEY UPDATE
+        F_DOCDATE = new_data.F_DOCDATE,
+        F_DOCTIME = new_data.F_DOCTIME,
+        F_DUEDATE = new_data.F_DUEDATE,
+        F_SALESID = new_data.F_SALESID,
+        F_ITEMID = new_data.F_ITEMID,
+        F_PARTID = new_data.F_PARTID,
+        F_DOCQTY = new_data.F_DOCQTY,
+        F_DUEQTY = new_data.F_DUEQTY,
+        F_SHEETQTY = new_data.F_SHEETQTY,
+        F_RESQTY = new_data.F_RESQTY,
+        F_FREEQTY = new_data.F_FREEQTY,
+        F_PAPERWID = new_data.F_PAPERWID,
+        F_SHEETLEN = new_data.F_SHEETLEN,
+        F_SHEETWID = new_data.F_SHEETWID,
+        F_LCUT = new_data.F_LCUT,
+        F_WCUT = new_data.F_WCUT,
+        F_JOINSHEET = new_data.F_JOINSHEET,
+        F_EDITBY = new_data.F_EDITBY,
+        F_CONFBY = new_data.F_CONFBY,
+        F_ISCONF = new_data.F_ISCONF,
+        F_ISCLOSE = new_data.F_ISCLOSE,
+        F_CLOSETYPE = new_data.F_CLOSETYPE,
+        F_CLOSEDATE = new_data.F_CLOSEDATE,
+        F_RMRK = new_data.F_RMRK,
+        F_UNITAREA = new_data.F_UNITAREA,
+        F_ISOUT = new_data.F_ISOUT,
+        F_UPCUT = new_data.F_UPCUT,
+        F_LOWCUT = new_data.F_LOWCUT,
+        F_UPWID = new_data.F_UPWID,
+        F_LOWWID = new_data.F_LOWWID,
+        F_PAPER = new_data.F_PAPER,
+        F_FLUTEID = new_data.F_FLUTEID,
+        F_BIANLIAO = new_data.F_BIANLIAO,
+        F_BUSHU = new_data.F_BUSHU,
+        F_BUSHUREASON = new_data.F_BUSHUREASON,
+        F_BPINV = new_data.F_BPINV,
+        F_TRANSPORTEDTIME = new_data.F_TRANSPORTEDTIME,
+        F_BOARDAREA = new_data.F_BOARDAREA,
+        F_LAYERTYPE = new_data.F_LAYERTYPE,
+        F_ScoreType = new_data.F_ScoreType,
+        F_BIANLIAOPRODID = new_data.F_BIANLIAOPRODID,
+        F_BIANLIAOCOUNT = new_data.F_BIANLIAOCOUNT,
+        F_TechFlowID = new_data.F_TechFlowID,
+        F_RMRK_CONVERTPROD = new_data.F_RMRK_CONVERTPROD,
+        F_PRODIDBYINVSET = new_data.F_PRODIDBYINVSET,
+        F_FeiLiao = new_data.F_FeiLiao,
+        F_ReWork = new_data.F_ReWork,
+        F_ReWorkProdID = new_data.F_ReWorkProdID,
+        F_ExceedProdID = new_data.F_ExceedProdID,
+        F_DIENUM = new_data.F_DIENUM,
+        F_CreatedBY = new_data.F_CreatedBY,
+        F_TECHFLOWMAINID = new_data.F_TECHFLOWMAINID,
+        F_ScoreIsControledByMinVal = new_data.F_ScoreIsControledByMinVal,
+        F_WIPLen = new_data.F_WIPLen,
+        F_WIPWidth = new_data.F_WIPWidth,
+        F_FLOWID = new_data.F_FLOWID,
+        F_IsBPCorrugatorAccepted = new_data.F_IsBPCorrugatorAccepted,
+        F_BPCorrugatorAcceptBy = new_data.F_BPCorrugatorAcceptBy,
+        F_BPCorrugatorUploaded = new_data.F_BPCorrugatorUploaded,
+        F_dataSource = new_data.F_dataSource,
+        f_updateTime = new_data.f_updateTime
+    </insert>
+
+    <delete id="deleteBatch" parameterType="java.util.List">
+        DELETE FROM t_prodordhdr
+        WHERE (BP, F_ID) IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            (#{item.BP}, #{item.F_ID})
+        </foreach>
+    </delete>
+
+</mapper>
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/mapper/SalesOrdDtlMapper.xml
+================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.executor.cdc.mapper.SalesOrdDtlMapper">
+
+    <!-- 批量 Upsert (MySQL 8 别名语法) -->
+    <insert id="upsertBatch" parameterType="java.util.List">
+        INSERT INTO fact_sales_order_dtl (
+        BP,
+        F_SALESID,
+        F_ITEMID,
+        F_DOCQTY,
+        F_UNITAMT,
+        F_BOARDLEN,
+        F_BOARDWID,
+        F_PRICEBOARDWID,
+        F_BPINV,
+        F_ISINV,
+        F_INVQTY,
+        F_dataSource,
+        f_updateTime
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.BP},
+            #{item.F_SALESID},
+            #{item.F_ITEMID},
+            #{item.F_DOCQTY},
+            #{item.F_UNITAMT},
+            #{item.F_BOARDLEN},
+            #{item.F_BOARDWID},
+            #{item.F_PRICEBOARDWID},
+            #{item.F_BPINV},
+            #{item.F_ISINV},
+            #{item.F_INVQTY},
+            #{item.F_dataSource},
+            #{item.f_updateTime}
+            )
+        </foreach>
+        AS new_data
+        ON DUPLICATE KEY UPDATE
+        BP=new_data.BP,
+        F_DOCQTY = new_data.F_DOCQTY,
+        F_UNITAMT = new_data.F_UNITAMT,
+        F_BOARDLEN = new_data.F_BOARDLEN,
+        F_BOARDWID = new_data.F_BOARDWID,
+        F_PRICEBOARDWID = new_data.F_PRICEBOARDWID,
+        F_BPINV = new_data.F_BPINV,
+        F_ISINV = new_data.F_ISINV,
+        F_INVQTY = new_data.F_INVQTY,
+        F_dataSource = new_data.F_dataSource,
+        f_updateTime = new_data.f_updateTime
+    </insert>
+
+    <!-- 【修正后的删除方法】MySQL 8 完全支持 (BP, F_SALESID, F_ITEMID) 联合条件 -->
+    <delete id="deleteBatch" parameterType="java.util.List">
+        DELETE FROM fact_sales_order_dtl
+        WHERE (F_SALESID, F_ITEMID) IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            (#{item.F_SALESID}, #{item.F_ITEMID})
+        </foreach>
+    </delete>
+
+</mapper>
+
+
+================================================
+FILE: xxl-job-executor-samples/xxl-job-executor-etl/src/main/resources/mapper/SalesOrdHrdMapper.xml
+================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxl.job.executor.cdc.mapper.SalesOrdHdrMapper">
+
+    <!-- 批量 Upsert：以目标表主键 F_SALESID 自动判断冲突 -->
+    <insert id="upsertBatch" parameterType="java.util.List">
+        INSERT INTO fact_sales_order_hdr (
+        BP,
+        F_SALESID,
+        F_CUSTORDID,
+        F_DOCDATE,
+        F_Date,
+        F_CUSTID,
+        F_CreatedBY,
+        F_EDITBY,
+        F_CONFBY,
+        F_CloseBy,
+        F_ISCONF,
+        F_ISCLOSE,
+        F_ITEMID,
+        F_DOCQTY,
+        F_TRDTYPE,
+        F_PRNVER,
+        F_TAXRATE,
+        F_CURRTYPE,
+        F_DRAWER,
+        F_LEVELID,
+        F_CUSTLEVELID,
+        F_dataSource,
+        f_updateTime
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.BP},
+            #{item.F_ID},
+            #{item.F_CUSTORDID},
+            #{item.F_DOCDATE},
+            #{item.F_Date},
+            #{item.F_CUSTID},
+            #{item.F_CreatedBY},
+            #{item.F_EDITBY},
+            #{item.F_CONFBY},
+            #{item.F_CloseBy},
+            #{item.F_ISCONF},
+            #{item.F_ISCLOSE},
+            #{item.F_ITEMID},
+            #{item.F_DOCQTY},
+            #{item.F_TRDTYPE},
+            #{item.F_PRNVER},
+            #{item.F_TAXRATE},
+            #{item.F_CURRTYPE},
+            #{item.F_DRAWER},
+            #{item.F_LEVELID},
+            #{item.F_CUSTLEVELID},
+            #{item.F_dataSource},
+            #{item.f_updateTime}
+            )
+        </foreach>
+        AS new_data
+        ON DUPLICATE KEY UPDATE
+        BP = new_data.BP,
+        F_CUSTORDID = new_data.F_CUSTORDID,
+        F_DOCDATE = new_data.F_DOCDATE,
+        F_Date = new_data.F_Date,
+        F_CUSTID = new_data.F_CUSTID,
+        F_CreatedBY = new_data.F_CreatedBY,
+        F_EDITBY = new_data.F_EDITBY,
+        F_CONFBY = new_data.F_CONFBY,
+        F_CloseBy = new_data.F_CloseBy,
+        F_ISCONF = new_data.F_ISCONF,
+        F_ISCLOSE = new_data.F_ISCLOSE,
+        F_ITEMID = new_data.F_ITEMID,
+        F_DOCQTY = new_data.F_DOCQTY,
+        F_TRDTYPE = new_data.F_TRDTYPE,
+        F_PRNVER = new_data.F_PRNVER,
+        F_TAXRATE = new_data.F_TAXRATE,
+        F_CURRTYPE = new_data.F_CURRTYPE,
+        F_DRAWER = new_data.F_DRAWER,
+        F_LEVELID = new_data.F_LEVELID,
+        F_CUSTLEVELID = new_data.F_CUSTLEVELID,
+        F_dataSource = new_data.F_dataSource,
+        f_updateTime = new_data.f_updateTime
+    </insert>
+
+    <!-- 批量删除：直接依据单主键 F_SALESID 删除 -->
+    <delete id="deleteBatch" parameterType="java.util.List">
+        DELETE FROM fact_sales_order_hdr
+        WHERE F_SALESID IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.F_ID}
+        </foreach>
+    </delete>
+
+</mapper>
+

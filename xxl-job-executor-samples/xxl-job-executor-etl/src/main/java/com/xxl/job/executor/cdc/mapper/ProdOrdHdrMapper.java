@@ -1,7 +1,5 @@
 package com.xxl.job.executor.cdc.mapper;
 
-import org.apache.ibatis.annotations.Param;
-
 import java.util.List;
 import java.util.Map;
 
